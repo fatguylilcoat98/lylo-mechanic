@@ -11,6 +11,7 @@ from api.routes.session import session_bp
 from api.routes.diagnose import diagnose_bp
 from api.routes.scenarios import scenarios_bp
 from api.routes.tutorial import tutorial_bp
+from api.routes.live import live_bp
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 CORS(app)
@@ -19,6 +20,7 @@ app.register_blueprint(session_bp, url_prefix="/api/v1/session")
 app.register_blueprint(diagnose_bp, url_prefix="/api/v1/diagnose")
 app.register_blueprint(scenarios_bp, url_prefix="/api/v1/scenarios")
 app.register_blueprint(tutorial_bp, url_prefix="/api/v1/tutorial")
+app.register_blueprint(live_bp, url_prefix="/api/v1/diagnose")
 
 @app.route("/")
 def index():
@@ -30,4 +32,4 @@ def health():
     return {"status": "ok", "system": "LYLO Mechanic", "version": "1.0.0"}
 
 if __name__ == "__main__":
-   app.run(host="0.0.0.0", port=5055, debug=False)
+    app.run(debug=True, port=5055)
