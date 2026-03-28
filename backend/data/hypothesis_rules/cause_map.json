@@ -1,0 +1,270 @@
+{
+  "P0420": {
+    "causes": [
+      {
+        "id": "exhaust_manifold_leak",
+        "name": "Exhaust Manifold / Header Leak",
+        "description": "A leak upstream of the O2 sensors introduces extra oxygen, causing the sensor to read lean and falsely flag catalyst inefficiency. This is the most commonly missed cause of P0420.",
+        "base_confidence": 55,
+        "basis": "plausible",
+        "boosted_by": ["symptom_exhaust_smell", "symptom_ticking_noise_cold", "high_ltft"],
+        "supporting_evidence_template": ["P0420 can be triggered by exhaust leaks near O2 sensors", "Exhaust smell or cold-start tick increases likelihood"],
+        "what_could_be_wrong": ["If no exhaust smell and fuel trims are normal, this is less likely", "Requires physical inspection — cannot be confirmed from OBD data alone"],
+        "is_downstream": false
+      },
+      {
+        "id": "faulty_downstream_o2",
+        "name": "Faulty Downstream O2 Sensor",
+        "description": "The rear O2 sensor measures catalyst efficiency. A lazy or biased sensor produces incorrect readings that mimic catalyst failure without the converter actually being bad.",
+        "base_confidence": 50,
+        "basis": "plausible",
+        "boosted_by": ["high_mileage", "symptom_warning_light_only"],
+        "supporting_evidence_template": ["Downstream O2 sensor failure commonly mimics P0420", "High mileage increases sensor failure probability"],
+        "what_could_be_wrong": ["If upstream/downstream voltage patterns look correct, sensor may be fine", "Testing requires oscilloscope or scan tool graphing"],
+        "is_downstream": false
+      },
+      {
+        "id": "catalytic_converter_failure",
+        "name": "Catalytic Converter Degradation",
+        "description": "The catalyst substrate has degraded below efficiency threshold. This is the code's stated cause, but should only be concluded after ruling out the above.",
+        "base_confidence": 40,
+        "basis": "plausible",
+        "boosted_by": ["high_mileage_over_150k", "prior_misfires", "prior_oil_burning"],
+        "supporting_evidence_template": ["P0420 does indicate the converter is a candidate", "High mileage or history of misfires supports converter wear"],
+        "what_could_be_wrong": ["Replacing the converter without ruling out exhaust leaks or O2 sensors is expensive and often wrong", "Catalyst efficiency test needed first"],
+        "is_downstream": false
+      },
+      {
+        "id": "upstream_o2_issue",
+        "name": "Upstream O2 Sensor Performance Issue",
+        "description": "A sluggish upstream sensor can cause incorrect air-fuel corrections that reduce apparent catalyst efficiency.",
+        "base_confidence": 30,
+        "basis": "low_confidence",
+        "boosted_by": ["high_ltft_or_stft"],
+        "supporting_evidence_template": ["Upstream O2 performance affects catalyst efficiency readings"],
+        "what_could_be_wrong": ["Less common than downstream sensor issues for P0420"],
+        "is_downstream": false
+      }
+    ],
+    "check_first": ["Inspect for exhaust leaks by listening for ticking at cold start", "Check for exhaust smell at startup", "Read fuel trim values — high LTFT suggests upstream issue first"],
+    "cascade_note": null
+  },
+
+  "P0301": {
+    "causes": [
+      {
+        "id": "spark_plug_cyl1",
+        "name": "Worn or Fouled Spark Plug (Cylinder 1)",
+        "description": "A degraded spark plug on cylinder 1 is the most common cause of a single-cylinder misfire, especially in vehicles over 60,000 miles.",
+        "base_confidence": 70,
+        "basis": "symptom_correlated",
+        "boosted_by": ["high_mileage", "rough_idle", "hesitation"],
+        "supporting_evidence_template": ["Single-cylinder misfire typically starts with ignition components", "Mileage and idle symptoms support plug wear"],
+        "what_could_be_wrong": ["If plug looks fine, coil or injector is next", "Carbon fouling on GDI engines can cause misfires not visible on plug inspection"],
+        "is_downstream": false
+      },
+      {
+        "id": "ignition_coil_cyl1",
+        "name": "Failing Ignition Coil (Cylinder 1)",
+        "description": "Coil-on-plug systems see coil failure as a primary misfire cause. Coil failure often appears intermittently at first, especially when hot.",
+        "base_confidence": 60,
+        "basis": "symptom_correlated",
+        "boosted_by": ["misfire_worse_when_hot", "symptom_stalling"],
+        "supporting_evidence_template": ["COP coil failure is a primary single-cylinder misfire cause", "Heat-related intermittence supports coil over plug"],
+        "what_could_be_wrong": ["Swap coil to another cylinder and see if misfire follows the coil — this is the definitive test"],
+        "is_downstream": false
+      },
+      {
+        "id": "fuel_injector_cyl1",
+        "name": "Clogged or Failing Fuel Injector (Cylinder 1)",
+        "description": "A stuck or clogged injector on cylinder 1 causes lean misfire. More likely if fuel trims are elevated.",
+        "base_confidence": 35,
+        "basis": "plausible",
+        "boosted_by": ["high_ltft", "misfire_under_load"],
+        "supporting_evidence_template": ["Injector issues can cause single-cylinder lean misfire", "High fuel trims support fuel delivery issue"],
+        "what_could_be_wrong": ["Injector issues are less common than ignition; rule out spark first"],
+        "is_downstream": false
+      }
+    ],
+    "check_first": ["Check plug condition on cylinder 1 first", "If plug looks ok, swap coil pack to another cylinder and clear codes to see if misfire follows"],
+    "cascade_note": "If P0420 is also present, the misfire may have damaged the catalyst. Address misfire first."
+  },
+
+  "P0171": {
+    "causes": [
+      {
+        "id": "vacuum_leak",
+        "name": "Vacuum Leak",
+        "description": "Unmetered air entering after the MAF sensor causes a lean condition. This is the most common cause of P0171 and is often free or cheap to fix.",
+        "base_confidence": 65,
+        "basis": "OBD_confirmed",
+        "boosted_by": ["high_ltft_over_10", "rough_idle", "hissing_sound"],
+        "supporting_evidence_template": ["P0171 with elevated LTFT strongly suggests vacuum leak", "Rough idle further supports air leak diagnosis"],
+        "what_could_be_wrong": ["If LTFT is only slightly elevated, the cause may be a weak O2 sensor not a real lean condition"],
+        "is_downstream": false
+      },
+      {
+        "id": "dirty_maf_sensor",
+        "name": "Dirty or Failing MAF Sensor",
+        "description": "A contaminated MAF sensor under-reports airflow, causing the ECU to run lean. MAF sensors are wear items on high-mileage vehicles.",
+        "base_confidence": 50,
+        "basis": "plausible",
+        "boosted_by": ["high_mileage", "low_maf_reading"],
+        "supporting_evidence_template": ["Dirty MAF is a leading lean-code cause", "MAF value below expected range for RPM supports this"],
+        "what_could_be_wrong": ["MAF cleaning with sensor-safe spray is a $5 first step — try this before replacement"],
+        "is_downstream": false
+      },
+      {
+        "id": "weak_fuel_pump",
+        "name": "Weak Fuel Pump / Low Fuel Pressure",
+        "description": "Insufficient fuel pressure causes lean conditions, especially under load or at highway speeds.",
+        "base_confidence": 30,
+        "basis": "low_confidence",
+        "boosted_by": ["misfire_under_load", "hesitation_acceleration"],
+        "supporting_evidence_template": ["Lean codes with load-based symptoms suggest fuel pressure issue"],
+        "what_could_be_wrong": ["Requires fuel pressure gauge test to confirm — cannot be confirmed from OBD-II data alone"],
+        "is_downstream": false
+      }
+    ],
+    "check_first": ["Check LTFT — if over +15%, start with vacuum leak inspection", "MAF cleaning is free and quick — rule it out first"],
+    "cascade_note": null
+  },
+
+  "P0011": {
+    "causes": [
+      {
+        "id": "wrong_oil_viscosity",
+        "name": "Incorrect Engine Oil Viscosity",
+        "description": "VVT systems rely on specific oil viscosity to control cam timing. Using 5W-30 when 0W-20 is required is a common cause of P0011 and is a free fix.",
+        "base_confidence": 60,
+        "basis": "plausible",
+        "boosted_by": ["recent_oil_change", "no_prior_cam_codes"],
+        "supporting_evidence_template": ["Oil viscosity is a leading, low-cost cause of VVT cam codes"],
+        "what_could_be_wrong": ["If oil type is correct, move to solenoid or actuator"],
+        "is_downstream": false
+      },
+      {
+        "id": "vvt_solenoid",
+        "name": "Faulty VVT Oil Control Solenoid",
+        "description": "The solenoid controls oil flow to the VVT actuator. A stuck or failed solenoid prevents proper cam timing control.",
+        "base_confidence": 50,
+        "basis": "plausible",
+        "boosted_by": ["correct_oil_confirmed", "symptom_rough_idle"],
+        "supporting_evidence_template": ["VVT solenoid failure is a common mid-range repair for cam timing codes"],
+        "what_could_be_wrong": ["Solenoid replacement is mid-level DIY — often $80-150 part"],
+        "is_downstream": false
+      },
+      {
+        "id": "timing_chain_stretch",
+        "name": "Timing Chain Stretch",
+        "description": "A stretched timing chain causes cam timing to drift. This is the most serious cause and is indicated by rattling on cold start.",
+        "base_confidence": 35,
+        "basis": "symptom_correlated",
+        "boosted_by": ["cold_start_rattle", "high_mileage", "multiple_cam_codes"],
+        "supporting_evidence_template": ["Cold-start rattle with cam timing codes is a timing chain red flag"],
+        "what_could_be_wrong": ["Timing chain failure on interference engine is catastrophic — do not delay if this is suspected"],
+        "is_downstream": false
+      }
+    ],
+    "check_first": ["Verify oil type and level first — this is a free fix if wrong", "Listen for cold-start rattle — if present, stop driving and get professional inspection"],
+    "cascade_note": "P0011 with engine knock = do not drive. Potential timing chain failure."
+  },
+
+  "P0562": {
+    "causes": [
+      {
+        "id": "weak_battery",
+        "name": "Weak or Failing Battery",
+        "description": "A battery with reduced capacity causes voltage sag under load, triggering low voltage codes and potentially multiple cascade codes.",
+        "base_confidence": 70,
+        "basis": "OBD_confirmed",
+        "boosted_by": ["multiple_unrelated_codes", "symptom_electrical"],
+        "supporting_evidence_template": ["P0562 with multiple unrelated codes strongly suggests battery as root cause", "Low battery voltage can trigger false cascade codes across systems"],
+        "what_could_be_wrong": ["Load test the battery before chasing individual cascade codes — all other codes may disappear after battery replacement"],
+        "is_downstream": false
+      },
+      {
+        "id": "failing_alternator",
+        "name": "Failing Alternator",
+        "description": "An alternator not maintaining charging voltage causes progressive voltage drop while driving.",
+        "base_confidence": 50,
+        "basis": "plausible",
+        "boosted_by": ["battery_voltage_pid_low", "symptom_electrical"],
+        "supporting_evidence_template": ["Alternator output can be checked with a multimeter at idle"],
+        "what_could_be_wrong": ["Check battery first — alternator testing requires the battery to be in good condition"],
+        "is_downstream": false
+      }
+    ],
+    "check_first": ["Battery load test first — takes 5 minutes at any auto parts store, usually free"],
+    "cascade_note": "P0562 is often a cascade ROOT. Multiple unrelated codes with P0562 = fix voltage first, then recheck all codes."
+  },
+
+  "NO_CODE_VIBRATION": {
+    "causes": [
+      {
+        "id": "tire_balance",
+        "name": "Unbalanced Tire(s)",
+        "description": "Tire imbalance causes speed-dependent vibration, typically felt through steering wheel at 60–75 mph.",
+        "base_confidence": 60,
+        "basis": "symptom_correlated",
+        "boosted_by": ["vibration_highway", "vibration_steering_wheel"],
+        "supporting_evidence_template": ["Speed-specific vibration in steering wheel is classic tire imbalance"],
+        "what_could_be_wrong": ["If vibration is in seat not steering wheel, may be rear tires or driveshaft"],
+        "is_downstream": false
+      },
+      {
+        "id": "wheel_bearing",
+        "name": "Worn Wheel Bearing",
+        "description": "A failing wheel bearing causes a growling, humming vibration that changes with vehicle speed and may intensify when turning.",
+        "base_confidence": 45,
+        "basis": "symptom_correlated",
+        "boosted_by": ["vibration_changes_with_turns", "humming_noise"],
+        "supporting_evidence_template": ["Vibration that changes when gently weaving at highway speed suggests wheel bearing"],
+        "what_could_be_wrong": ["Wheel bearing failure can become sudden and catastrophic — do not delay if suspected"],
+        "is_downstream": false
+      },
+      {
+        "id": "cv_axle",
+        "name": "Worn CV Axle/Joint",
+        "description": "A failing CV joint causes vibration or clunking during acceleration, especially from stops or during turns.",
+        "base_confidence": 35,
+        "basis": "symptom_correlated",
+        "boosted_by": ["vibration_acceleration", "clunking_turning"],
+        "supporting_evidence_template": ["CV joint symptoms typically appear during turns or acceleration"],
+        "what_could_be_wrong": ["Pure highway speed vibration without turning is less likely CV — consider tire/bearing first"],
+        "is_downstream": false
+      }
+    ],
+    "check_first": ["Get a tire balance first — $20-40 and eliminates the most common cause", "Check for uneven tire wear pattern"],
+    "cascade_note": "OBD-II cannot detect any of these conditions. This diagnosis is based entirely on symptoms."
+  },
+
+  "NO_CODE_BRAKE": {
+    "causes": [
+      {
+        "id": "brake_pad_wear",
+        "name": "Worn Brake Pads",
+        "description": "Brake pads at or below minimum thickness cause increased stopping distance and may produce squealing or grinding.",
+        "base_confidence": 55,
+        "basis": "symptom_correlated",
+        "boosted_by": ["symptom_brake_squeal", "high_mileage"],
+        "supporting_evidence_template": ["Brake wear is the most common brake symptom cause"],
+        "what_could_be_wrong": ["If pedal is soft or spongy, pads alone are not the issue — inspect hydraulics"],
+        "is_downstream": false
+      },
+      {
+        "id": "brake_fluid_issue",
+        "name": "Low or Degraded Brake Fluid",
+        "description": "Low fluid level or moisture-contaminated fluid can cause soft pedal feel and reduced braking performance.",
+        "base_confidence": 50,
+        "basis": "symptom_correlated",
+        "boosted_by": ["symptom_soft_pedal", "symptom_pedal_to_floor"],
+        "supporting_evidence_template": ["Soft pedal is a hydraulic symptom, not a pad symptom"],
+        "what_could_be_wrong": ["Soft pedal with normal fluid level may indicate air in lines or caliper issue — requires physical inspection"],
+        "is_downstream": false
+      }
+    ],
+    "check_first": ["Visually inspect pad thickness through wheel spokes before driving", "Check brake fluid level and color"],
+    "cascade_note": "ANY brake symptom involving soft pedal, pedal to floor, or pulling = DO NOT DRIVE. OBD cannot detect brake hydraulic failures."
+  }
+}

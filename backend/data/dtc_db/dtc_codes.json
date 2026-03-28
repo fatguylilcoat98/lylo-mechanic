@@ -1,0 +1,178 @@
+{
+  "P0100": {
+    "description": "Mass Air Flow Circuit Malfunction",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["dirty_maf_sensor", "vacuum_leak", "maf_sensor_failure", "wiring_harness"],
+    "cascade_source": false
+  },
+  "P0101": {
+    "description": "Mass Air Flow Circuit Range/Performance",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["dirty_maf_sensor", "vacuum_leak", "intake_restriction"],
+    "cascade_source": false
+  },
+  "P0171": {
+    "description": "System Too Lean (Bank 1)",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["vacuum_leak", "dirty_maf_sensor", "weak_fuel_pump", "clogged_fuel_injector", "faulty_o2_sensor"],
+    "cascade_source": false
+  },
+  "P0172": {
+    "description": "System Too Rich (Bank 1)",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["leaking_fuel_injector", "faulty_o2_sensor", "high_fuel_pressure", "coolant_temp_sensor"],
+    "cascade_source": false
+  },
+  "P0300": {
+    "description": "Random/Multiple Cylinder Misfire Detected",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["spark_plugs", "ignition_coils", "fuel_injectors", "vacuum_leak", "low_compression", "timing_chain"],
+    "cascade_source": true
+  },
+  "P0301": {
+    "description": "Cylinder 1 Misfire Detected",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["spark_plug_cyl1", "ignition_coil_cyl1", "fuel_injector_cyl1", "low_compression_cyl1"],
+    "cascade_source": true
+  },
+  "P0302": {
+    "description": "Cylinder 2 Misfire Detected",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["spark_plug_cyl2", "ignition_coil_cyl2", "fuel_injector_cyl2"],
+    "cascade_source": true
+  },
+  "P0303": {
+    "description": "Cylinder 3 Misfire Detected",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["spark_plug_cyl3", "ignition_coil_cyl3", "fuel_injector_cyl3"],
+    "cascade_source": true
+  },
+  "P0304": {
+    "description": "Cylinder 4 Misfire Detected",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["spark_plug_cyl4", "ignition_coil_cyl4", "fuel_injector_cyl4"],
+    "cascade_source": true
+  },
+  "P0420": {
+    "description": "Catalyst System Efficiency Below Threshold (Bank 1)",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["faulty_catalytic_converter", "exhaust_leak", "faulty_downstream_o2", "faulty_upstream_o2", "engine_misfires_causing_cat_damage", "oil_burning"],
+    "cascade_source": false
+  },
+  "P0440": {
+    "description": "Evaporative Emission Control System Malfunction",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["loose_gas_cap", "faulty_purge_valve", "cracked_charcoal_canister", "leak_in_evap_hose"],
+    "cascade_source": false
+  },
+  "P0455": {
+    "description": "Evaporative Emission Control System Leak Detected (Large)",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["loose_gas_cap", "faulty_purge_valve", "cracked_charcoal_canister", "damaged_evap_hose"],
+    "cascade_source": false
+  },
+  "P0128": {
+    "description": "Coolant Temperature Below Thermostat Regulating Temperature",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["faulty_thermostat", "wrong_thermostat_installed", "coolant_temp_sensor"],
+    "cascade_source": false
+  },
+  "P0217": {
+    "description": "Engine Coolant Over Temperature Condition",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["low_coolant", "faulty_thermostat", "water_pump_failure", "radiator_blockage", "head_gasket"],
+    "cascade_source": false
+  },
+  "P0011": {
+    "description": "Camshaft Position A - Timing Over-Advanced or System Performance (Bank 1)",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["wrong_oil_viscosity", "low_oil_level", "faulty_vvt_actuator", "faulty_vvt_solenoid", "timing_chain_stretch"],
+    "cascade_source": false
+  },
+  "P0021": {
+    "description": "Camshaft Position A - Timing Over-Advanced or System Performance (Bank 2)",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["wrong_oil_viscosity", "low_oil_level", "faulty_vvt_actuator_b2", "timing_chain_stretch"],
+    "cascade_source": false
+  },
+  "P0335": {
+    "description": "Crankshaft Position Sensor A Circuit Malfunction",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["faulty_crankshaft_position_sensor", "damaged_reluctor_ring", "wiring_issue"],
+    "cascade_source": false
+  },
+  "C0035": {
+    "description": "Left Front Wheel Speed Sensor Circuit",
+    "system": "chassis",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["wheel_speed_sensor", "wheel_bearing", "wiring_damage"],
+    "cascade_source": false
+  },
+  "C0040": {
+    "description": "Right Front Wheel Speed Sensor Circuit",
+    "system": "chassis",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["wheel_speed_sensor_rf", "wheel_bearing_rf", "wiring_damage"],
+    "cascade_source": false
+  },
+  "B0001": {
+    "description": "Driver Frontal Stage 1 Deployment Control",
+    "system": "body",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["airbag_module", "clock_spring", "wiring"],
+    "cascade_source": false
+  },
+  "U0100": {
+    "description": "Lost Communication With ECM/PCM",
+    "system": "network",
+    "category": "SAE_standard",
+    "safety_related": true,
+    "common_causes": ["low_battery_voltage", "damaged_can_bus_wiring", "faulty_ecm", "bad_ground"],
+    "cascade_source": false
+  },
+  "P0562": {
+    "description": "System Voltage Low",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["weak_battery", "failing_alternator", "high_resistance_ground", "excessive_parasitic_drain"],
+    "cascade_source": true
+  }
+}

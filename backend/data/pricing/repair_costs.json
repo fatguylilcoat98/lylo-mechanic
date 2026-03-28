@@ -1,0 +1,351 @@
+{
+  "_meta": {
+    "data_date": "2026-01-01",
+    "region": "US National Average",
+    "note": "Prices reflect national average ranges. Regional variation \u00b130%. Update every 12 months."
+  },
+  "spark_plug_cyl1": {
+    "volatility": "LOW",
+    "diy_parts_low": 20,
+    "diy_parts_high": 60,
+    "diy_tool_cost": 15,
+    "shop_parts_low": 20,
+    "shop_parts_high": 60,
+    "shop_labor_low": 80,
+    "shop_labor_high": 200,
+    "dealer_total_low": 200,
+    "dealer_total_high": 400,
+    "dealer_note": "Dealer charges premium labor rates; identical parts",
+    "labor_hours_low": 0.5,
+    "labor_hours_high": 2.0,
+    "diy_time": "30 min \u2013 2 hours (varies by engine access)",
+    "parts": [
+      {
+        "name": "Spark Plug x4 (set)",
+        "qty": 4,
+        "low": 16,
+        "high": 50,
+        "oem_note": "OEM iridium recommended over copper"
+      },
+      {
+        "name": "Spark Plug x1 (single)",
+        "qty": 1,
+        "low": 6,
+        "high": 18,
+        "oem_note": "Match heat range to OEM spec"
+      }
+    ],
+    "uncertainty": [
+      "Labor time varies significantly based on engine layout",
+      "V6 and V8 rear bank plugs can add 1+ hours",
+      "Coil boots may need replacement if cracked"
+    ],
+    "estimate_wrong_if": [
+      "If misfire persists after plugs, coil or injector is next",
+      "GDI engines may need intake valve cleaning which is not included here"
+    ]
+  },
+  "ignition_coil_cyl1": {
+    "volatility": "LOW",
+    "diy_parts_low": 25,
+    "diy_parts_high": 80,
+    "diy_tool_cost": 0,
+    "shop_parts_low": 25,
+    "shop_parts_high": 80,
+    "shop_labor_low": 60,
+    "shop_labor_high": 150,
+    "dealer_total_low": 180,
+    "dealer_total_high": 380,
+    "dealer_note": "Dealers often replace all coils at once \u2014 ask to replace only failed unit first",
+    "labor_hours_low": 0.3,
+    "labor_hours_high": 1.0,
+    "diy_time": "20\u201345 minutes",
+    "parts": [
+      {
+        "name": "Ignition Coil (COP)",
+        "qty": 1,
+        "low": 25,
+        "high": 80,
+        "oem_note": "Aftermarket acceptable; avoid no-name brands"
+      }
+    ],
+    "uncertainty": [
+      "Price varies widely by make/model",
+      "Some engines require intake manifold removal for rear coils"
+    ],
+    "estimate_wrong_if": [
+      "If all coils are original at 100k+ miles, replacing one at a time may cost more than replacing all \u2014 get shop estimate for full set"
+    ]
+  },
+  "vacuum_leak": {
+    "volatility": "HIGH",
+    "diy_parts_low": 0,
+    "diy_parts_high": 40,
+    "diy_tool_cost": 10,
+    "shop_parts_low": 0,
+    "shop_parts_high": 40,
+    "shop_labor_low": 80,
+    "shop_labor_high": 250,
+    "dealer_total_low": 150,
+    "dealer_total_high": 500,
+    "dealer_note": "Dealer labor rates make vacuum leak diagnosis expensive if location is not immediately obvious",
+    "labor_hours_low": 0.5,
+    "labor_hours_high": 2.5,
+    "diy_time": "30 min \u2013 several hours (finding the leak is the hard part)",
+    "parts": [
+      {
+        "name": "Vacuum hose material",
+        "qty": 1,
+        "low": 5,
+        "high": 20,
+        "oem_note": "Match ID/OD exactly"
+      },
+      {
+        "name": "Intake manifold gasket (if needed)",
+        "qty": 1,
+        "low": 15,
+        "high": 60,
+        "oem_note": "Only if leak is at manifold seating surface"
+      }
+    ],
+    "uncertainty": [
+      "Location of leak dramatically affects repair cost",
+      "Smoke machine rental speeds up diagnosis significantly",
+      "Some leaks are at intake manifold gasket \u2014 repair cost jumps to $200-400"
+    ],
+    "estimate_wrong_if": [
+      "If leak is at intake manifold gasket, cost is substantially higher",
+      "Some vacuum leaks are only present cold or under load \u2014 intermittent leaks are harder to find"
+    ]
+  },
+  "exhaust_manifold_leak": {
+    "volatility": "MEDIUM",
+    "diy_parts_low": 15,
+    "diy_parts_high": 80,
+    "diy_tool_cost": 20,
+    "shop_parts_low": 15,
+    "shop_parts_high": 80,
+    "shop_labor_low": 150,
+    "shop_labor_high": 400,
+    "dealer_total_low": 300,
+    "dealer_total_high": 700,
+    "dealer_note": "Exhaust manifold work on dealer's lift rates is expensive",
+    "labor_hours_low": 1.0,
+    "labor_hours_high": 3.0,
+    "diy_time": "1\u20133 hours",
+    "parts": [
+      {
+        "name": "Exhaust manifold gasket",
+        "qty": 1,
+        "low": 15,
+        "high": 60,
+        "oem_note": "OEM preferred for heat resistance"
+      },
+      {
+        "name": "Exhaust manifold studs (often seized)",
+        "qty": 8,
+        "low": 10,
+        "high": 40,
+        "oem_note": "Budget for broken studs if vehicle is >8 years old"
+      }
+    ],
+    "uncertainty": [
+      "Seized/broken studs significantly increase labor time and cost",
+      "Older vehicles in rust belt have much higher costs"
+    ],
+    "estimate_wrong_if": [
+      "Broken studs requiring drilling/extraction can double the repair cost",
+      "Manifold crack vs gasket leak has different part cost"
+    ]
+  },
+  "catalytic_converter_failure": {
+    "volatility": "HIGH",
+    "diy_parts_low": 150,
+    "diy_parts_high": 600,
+    "diy_tool_cost": 50,
+    "shop_parts_low": 150,
+    "shop_parts_high": 600,
+    "shop_labor_low": 150,
+    "shop_labor_high": 400,
+    "dealer_total_low": 800,
+    "dealer_total_high": 2500,
+    "dealer_note": "OEM converters are expensive. Dealer may not install aftermarket. Confirm before proceeding.",
+    "labor_hours_low": 1.0,
+    "labor_hours_high": 2.5,
+    "diy_time": "1\u20132 hours (exhaust work requires lift or ramps)",
+    "parts": [
+      {
+        "name": "Catalytic Converter",
+        "qty": 1,
+        "low": 150,
+        "high": 600,
+        "oem_note": "CARB states: aftermarket converters may not pass smog in CA and other CARB states. Verify local regulations."
+      }
+    ],
+    "uncertainty": [
+      "Price varies dramatically by make/model/engine",
+      "California CARB compliant converters cost significantly more",
+      "V6/V8 engines may have two converters"
+    ],
+    "estimate_wrong_if": [
+      "Do not replace converter until exhaust leaks and O2 sensors are ruled out \u2014 very common to replace a good converter",
+      "P0420 is the most misdiagnosed code in the industry"
+    ]
+  },
+  "faulty_downstream_o2": {
+    "volatility": "LOW",
+    "diy_parts_low": 30,
+    "diy_parts_high": 120,
+    "diy_tool_cost": 25,
+    "shop_parts_low": 30,
+    "shop_parts_high": 120,
+    "shop_labor_low": 80,
+    "shop_labor_high": 200,
+    "dealer_total_low": 200,
+    "dealer_total_high": 450,
+    "dealer_note": null,
+    "labor_hours_low": 0.5,
+    "labor_hours_high": 1.5,
+    "diy_time": "20\u201345 minutes",
+    "parts": [
+      {
+        "name": "Downstream O2 Sensor",
+        "qty": 1,
+        "low": 30,
+        "high": 120,
+        "oem_note": "OEM or Denso/Bosch recommended over cheap aftermarket"
+      }
+    ],
+    "uncertainty": [
+      "Sensor may be seized \u2014 penetrating oil needed",
+      "Wrong sensor fitment wastes money \u2014 verify by position and connector type"
+    ],
+    "estimate_wrong_if": [
+      "Replacing a good sensor because the converter is actually bad will not fix P0420"
+    ]
+  },
+  "wrong_oil_viscosity": {
+    "volatility": "LOW",
+    "diy_parts_low": 25,
+    "diy_parts_high": 60,
+    "diy_tool_cost": 10,
+    "shop_parts_low": 25,
+    "shop_parts_high": 60,
+    "shop_labor_low": 30,
+    "shop_labor_high": 80,
+    "dealer_total_low": 80,
+    "dealer_total_high": 180,
+    "dealer_note": null,
+    "labor_hours_low": 0.3,
+    "labor_hours_high": 0.5,
+    "diy_time": "20 minutes",
+    "parts": [
+      {
+        "name": "Engine Oil (5 qt)",
+        "qty": 1,
+        "low": 20,
+        "high": 50,
+        "oem_note": "Match exact viscosity in owner's manual \u2014 0W-20 vs 5W-30 matters on VVT engines"
+      },
+      {
+        "name": "Oil Filter",
+        "qty": 1,
+        "low": 8,
+        "high": 20,
+        "oem_note": null
+      }
+    ],
+    "uncertainty": [],
+    "estimate_wrong_if": [
+      "If oil type is correct and code persists, move to VVT solenoid"
+    ]
+  },
+  "weak_battery": {
+    "volatility": "LOW",
+    "diy_parts_low": 80,
+    "diy_parts_high": 200,
+    "diy_tool_cost": 0,
+    "shop_parts_low": 80,
+    "shop_parts_high": 200,
+    "shop_labor_low": 30,
+    "shop_labor_high": 80,
+    "dealer_total_low": 180,
+    "dealer_total_high": 380,
+    "dealer_note": "Some vehicles require battery registration with scan tool after replacement \u2014 dealer or specialist needed",
+    "labor_hours_low": 0.3,
+    "labor_hours_high": 0.5,
+    "diy_time": "15\u201320 minutes",
+    "parts": [
+      {
+        "name": "12V Car Battery (group size varies)",
+        "qty": 1,
+        "low": 80,
+        "high": 200,
+        "oem_note": "Match group size, CCA rating, and type (AGM for some vehicles)"
+      }
+    ],
+    "uncertainty": [
+      "AGM batteries cost significantly more than standard flooded",
+      "Some vehicles require ECU/radio relearn after battery swap"
+    ],
+    "estimate_wrong_if": [
+      "If alternator is also failing, new battery will discharge again within days",
+      "Battery registration required on BMW, Mercedes, some VW/Audi \u2014 adds dealer cost"
+    ]
+  },
+  "tire_balance": {
+    "volatility": "LOW",
+    "diy_parts_low": 0,
+    "diy_parts_high": 0,
+    "diy_tool_cost": 0,
+    "shop_parts_low": 0,
+    "shop_parts_high": 20,
+    "shop_labor_low": 20,
+    "shop_labor_high": 60,
+    "dealer_total_low": 60,
+    "dealer_total_high": 120,
+    "dealer_note": null,
+    "labor_hours_low": 0.3,
+    "labor_hours_high": 0.5,
+    "diy_time": "NOT DIY \u2014 requires balancing machine",
+    "parts": [],
+    "uncertainty": [
+      "Wheel weights may need replacement if previous ones are missing"
+    ],
+    "estimate_wrong_if": [
+      "If vibration persists after balance, check for bent rim or worn tire"
+    ]
+  },
+  "wheel_bearing": {
+    "volatility": "MEDIUM",
+    "diy_parts_low": 40,
+    "diy_parts_high": 180,
+    "diy_tool_cost": 60,
+    "shop_parts_low": 40,
+    "shop_parts_high": 180,
+    "shop_labor_low": 150,
+    "shop_labor_high": 350,
+    "dealer_total_low": 300,
+    "dealer_total_high": 700,
+    "dealer_note": null,
+    "labor_hours_low": 1.0,
+    "labor_hours_high": 3.0,
+    "diy_time": "2\u20134 hours (requires press or hub puller on many applications)",
+    "parts": [
+      {
+        "name": "Wheel Bearing / Hub Assembly",
+        "qty": 1,
+        "low": 40,
+        "high": 180,
+        "oem_note": "Hub assembly (bolt-on) vs pressed bearing \u2014 varies by vehicle"
+      }
+    ],
+    "uncertainty": [
+      "Hub assembly vs pressed-in bearing significantly affects DIY difficulty",
+      "Seized axle nuts can add time"
+    ],
+    "estimate_wrong_if": [
+      "Do not delay wheel bearing replacement \u2014 failure can cause wheel to seize or separate"
+    ]
+  }
+}
