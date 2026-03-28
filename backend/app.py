@@ -30,4 +30,4 @@ def health():
     return {"status": "ok", "system": "LYLO Mechanic", "version": "1.0.0"}
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5055)
+   app.run(host="0.0.0.0", port=5055, debug=False)
