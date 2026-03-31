@@ -14,9 +14,6 @@ diagnose_bp = Blueprint("diagnose", __name__)
 @diagnose_bp.route("/scenario/<scenario_id>", methods=["POST"])
 def diagnose_scenario(scenario_id):
     """Run diagnosis on a named demo scenario."""
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
     from demo_scenarios.scenarios import get_scenario
 
     scenario = get_scenario(scenario_id)

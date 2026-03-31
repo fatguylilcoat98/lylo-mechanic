@@ -20,6 +20,7 @@ from safety.safety_classifier import classify_safety
 from diy.eligibility_gate import evaluate_diy_eligibility
 from cost.cost_engine import build_cost_estimates
 from veracore.truth_check import run_truth_check
+from handshake.client import classify as handshake_classify, get_friction_response
 
 
 def run_diagnosis(
@@ -75,7 +76,13 @@ def run_diagnosis(
     veracore_flags = run_truth_check(hypotheses, confidence, safety, cost_estimates)
 
     # ── Layer 12: Handshake Check ──────────────────────────────────
-    handshake_required, handshake_reason = _evaluate_handshake(safety, diy_eligibility)
+    # Build a question summary for the Handshake from the top hypothesis
+    _hs_question = ""
+    if hypotheses:
+        _hs_question = f"Vehicle repair: {hypotheses[0].cause_name} — {safety.level}"
+    handshake_required, handshake_reason, handshake_api = _evaluate_handshake(
+        safety, diy_eligibility, _hs_question
+    )
 
     # ── Build final narrative ─────────────────────────────────────
     what_this_might_mean = _build_meaning_narrative(hypotheses, confidence, cascade_notes)
@@ -94,6 +101,7 @@ def run_diagnosis(
         veracore_flags=veracore_flags,
         handshake_required=handshake_required,
         handshake_reason=handshake_reason,
+        handshake_api=handshake_api,
         what_we_know=what_we_know,
         what_this_might_mean=what_this_might_mean,
         what_to_check_first=check_first,
@@ -118,14 +126,33 @@ def _evaluate_tutorial_gate(
     return True, None
 
 
-def _evaluate_handshake(safety, diy: DIYEligibility | None) -> tuple[bool, str | None]:
+def _evaluate_handshake(safety, diy: DIYEligibility | None, question: str = "") -> tuple[bool, str | None, dict | None]:
+    """
+    Layer 12: Handshake evaluation.
+    First checks local rules. If high-stakes, also calls The Handshake API
+    at the-handshake.onrender.com for external friction classification.
+    Returns (required, reason, handshake_api_result).
+    """
+    required = False
+    reason = None
+
     if safety.user_must_acknowledge:
-        return True, f"Safety classification requires acknowledgment: {safety.level}"
-    if diy and diy.verdict == "DIY_WITH_CAUTION":
-        return True, "This repair has caution steps that require your acknowledgment before proceeding."
-    if safety.level in ("DO_NOT_DRIVE", "TOW_RECOMMENDED", "EMERGENCY_STOP_IMMEDIATELY"):
-        return True, "High-risk safety condition requires your confirmation that you understand the risks."
-    return False, None
+        required = True
+        reason = f"Safety classification requires acknowledgment: {safety.level}"
+    elif diy and diy.verdict == "DIY_WITH_CAUTION":
+        required = True
+        reason = "This repair has caution steps that require your acknowledgment before proceeding."
+    elif safety.level in ("DO_NOT_DRIVE", "TOW_RECOMMENDED", "EMERGENCY_STOP_IMMEDIATELY"):
+        required = True
+        reason = "High-risk safety condition requires your confirmation that you understand the risks."
+
+    # Call The Handshake API for external friction classification
+    hs_api = None
+    if required and question:
+        hs_result = handshake_classify(question)
+        hs_api = get_friction_response(hs_result)
+
+    return required, reason, hs_api
 
 
 def _build_meaning_narrative(hypotheses, confidence, cascade_notes) -> str:

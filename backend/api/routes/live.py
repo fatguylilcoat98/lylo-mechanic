@@ -69,7 +69,14 @@ def diagnose_live():
             vehicle_profile=vehicle_profile,
             raw_dtcs=raw_dtcs,
             raw_pids=raw_pids,
-            readiness_monitors=[],
+            readiness_monitors=[
+                ReadinessMonitor(
+                    name=rm.get("name", ""),
+                    status=rm.get("status", "incomplete"),
+                )
+                for rm in data.get("readiness_monitors", [])
+                if isinstance(rm, dict)
+            ],
             codes_cleared_before_scan=data.get("codes_cleared_before_scan", False),
         )
 

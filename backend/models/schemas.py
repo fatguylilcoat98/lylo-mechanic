@@ -357,6 +357,7 @@ class MechanicResponse:
     what_to_check_first: List[str]
     professional_help_triggers: List[str]
     session_flags: List[str]
+    handshake_api: Optional[dict] = None
 
     def to_dict(self) -> dict:
         import dataclasses
