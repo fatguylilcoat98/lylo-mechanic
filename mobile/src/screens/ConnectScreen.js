@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, StyleSheet,
-  ActivityIndicator, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import BluetoothService from '../services/BluetoothService';
 import OBDService from '../services/OBDService';
@@ -13,7 +13,6 @@ export default function ConnectScreen({navigation}) {
   const [error, setError] = useState(null);
   const [initInfo, setInitInfo] = useState(null);
 
-  // Load paired devices on mount
   useEffect(() => {
     (async () => {
       const granted = await BluetoothService.requestPermissions();
@@ -24,23 +23,25 @@ export default function ConnectScreen({navigation}) {
       const enabled = await BluetoothService.isBluetoothEnabled();
       if (!enabled) {
         setError('Please enable Bluetooth in your device settings.');
-        return;
       }
-      // Show paired devices immediately
-      const paired = await BluetoothService.getPairedDevices();
-      setDevices(paired);
     })();
   }, []);
 
-  const startDiscovery = useCallback(async () => {
+  const startScan = useCallback(async () => {
     setPhase('scanning');
     setError(null);
-    const discovered = await BluetoothService.discoverDevices(device => {
+    setDevices([]);
+
+    await BluetoothService.scanForDevices(device => {
       setDevices(prev => {
-        if (prev.find(d => d.address === device.address)) return prev;
-        return [...prev, device];
+        if (prev.find(d => d.id === device.id)) return prev;
+        // Sort OBDLink devices to top
+        const next = [...prev, device];
+        next.sort((a, b) => (b.isOBDLink ? 1 : 0) - (a.isOBDLink ? 1 : 0));
+        return next;
       });
     });
+
     setPhase('idle');
   }, []);
 
@@ -50,11 +51,11 @@ export default function ConnectScreen({navigation}) {
     setError(null);
 
     try {
-      await BluetoothService.connect(device.address);
+      const connInfo = await BluetoothService.connect(device.id);
 
-      // Initialize ELM327
+      // Initialize ELM327 over BLE
       const info = await OBDService.initialize();
-      setInitInfo(info);
+      setInitInfo({...info, profile: connInfo.profile});
       setPhase('ready');
     } catch (err) {
       setError(`Connection failed: ${err.message}`);
@@ -74,9 +75,11 @@ export default function ConnectScreen({navigation}) {
       disabled={phase === 'connecting'}>
       <View style={s.deviceInfo}>
         <Text style={s.deviceName}>
-          {item.isOBDLink ? '* ' : ''}{item.name}
+          {item.name}
         </Text>
-        <Text style={s.deviceAddr}>{item.address}</Text>
+        <Text style={s.deviceAddr}>
+          {item.id?.substring(0, 17)} | RSSI: {item.rssi ?? '?'} dBm
+        </Text>
       </View>
       {item.isOBDLink && (
         <View style={s.obdBadge}>
@@ -88,14 +91,17 @@ export default function ConnectScreen({navigation}) {
 
   return (
     <View style={s.container}>
-      {/* Status banner */}
+      {/* Connected banner */}
       {phase === 'ready' && (
         <View style={s.connectedBanner}>
           <Text style={s.connectedText}>
             Connected to {selectedDevice?.name}
           </Text>
           {initInfo && (
-            <Text style={s.protoText}>Protocol: {initInfo.protocol}</Text>
+            <>
+              <Text style={s.protoText}>Profile: {initInfo.profile}</Text>
+              <Text style={s.protoText}>Protocol: {initInfo.protocol}</Text>
+            </>
           )}
         </View>
       )}
@@ -110,19 +116,23 @@ export default function ConnectScreen({navigation}) {
       {phase !== 'ready' && (
         <>
           <Text style={s.sectionTitle}>
-            {devices.length > 0 ? 'Available Devices' : 'No devices found'}
+            {devices.length > 0
+              ? `Found ${devices.length} device${devices.length > 1 ? 's' : ''}`
+              : 'Tap Scan to find your OBDLink'}
           </Text>
 
           <FlatList
             data={devices}
-            keyExtractor={item => item.address}
+            keyExtractor={item => item.id}
             renderItem={renderDevice}
             style={s.list}
             ListEmptyComponent={
-              <Text style={s.emptyText}>
-                Pair your OBDLink MX+ in Android Bluetooth settings first,
-                then it will appear here.
-              </Text>
+              phase !== 'scanning' ? (
+                <Text style={s.emptyText}>
+                  Turn on your OBDLink MX+ adapter (plug it into the OBD port
+                  under your dash), then tap "Scan for Devices" below.
+                </Text>
+              ) : null
             }
           />
 
@@ -131,7 +141,7 @@ export default function ConnectScreen({navigation}) {
             {phase === 'scanning' ? (
               <View style={s.scanningRow}>
                 <ActivityIndicator color="#D4A843" />
-                <Text style={s.scanningText}>Scanning...</Text>
+                <Text style={s.scanningText}>Scanning for BLE devices...</Text>
               </View>
             ) : phase === 'connecting' ? (
               <View style={s.scanningRow}>
@@ -141,21 +151,20 @@ export default function ConnectScreen({navigation}) {
                 </Text>
               </View>
             ) : (
-              <TouchableOpacity style={s.scanBtn} onPress={startDiscovery}>
-                <Text style={s.scanBtnText}>Scan for New Devices</Text>
+              <TouchableOpacity style={s.scanBtn} onPress={startScan}>
+                <Text style={s.scanBtnText}>Scan for Devices</Text>
               </TouchableOpacity>
             )}
           </View>
         </>
       )}
 
-      {/* Connected — proceed button */}
+      {/* Connected — proceed */}
       {phase === 'ready' && (
         <View style={s.readyWrap}>
-          <Text style={s.readyIcon}>*</Text>
           <Text style={s.readyTitle}>Adapter Ready</Text>
           <Text style={s.readySubtitle}>
-            OBDLink MX+ is connected and initialized.
+            OBDLink MX+ is connected via BLE.
             {'\n'}Tap below to scan your vehicle.
           </Text>
           <TouchableOpacity style={s.goBtn} onPress={proceed}>
@@ -219,7 +228,6 @@ const s = StyleSheet.create({
   readyWrap: {
     flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
   },
-  readyIcon: {fontSize: 48, marginBottom: 16},
   readyTitle: {
     color: '#3FB950', fontSize: 22, fontWeight: '800', marginBottom: 8,
   },

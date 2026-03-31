@@ -1,4 +1,56 @@
 {
-  "name": "LyloMechanic",
-  "displayName": "LYLO Mechanic"
+  "expo": {
+    "name": "LYLO Mechanic",
+    "slug": "lylo-mechanic",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0D1117"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0D1117"
+      },
+      "package": "com.goodneighborguard.lylomechanic",
+      "permissions": [
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 23
+          }
+        }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": [
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "LYLO Mechanic needs Bluetooth to connect to your OBDLink adapter."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "916eda9d-5bf2-40c4-abdb-22ea6e491d96"
+      }
+    },
+    "owner": "stangman1998"
+  }
 }

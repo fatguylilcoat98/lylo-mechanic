@@ -1,22 +1,50 @@
 /**
- * BluetoothService — Bluetooth Classic SPP connection manager
+ * BluetoothService — BLE connection manager for OBDLink MX+
  *
- * OBDLink MX+ exposes a Bluetooth Classic Serial Port Profile (SPP).
- * This service handles discovery, pairing, connect/disconnect, and
- * raw serial read/write over RFCOMM.
+ * OBDLink MX+ exposes a BLE GATT service with a single characteristic
+ * for serial data (Nordic UART Service pattern):
+ *   Service UUID:  0000fff0-0000-1000-8000-00805f9b34fb
+ *   TX (write):    0000fff1-0000-1000-8000-00805f9b34fb  (phone → adapter)
+ *   RX (notify):   0000fff2-0000-1000-8000-00805f9b34fb  (adapter → phone)
  *
- * Depends on: react-native-bluetooth-classic
+ * Some OBDLink models use the standard Nordic UART UUIDs:
+ *   Service:  6e400001-b5a3-f393-e0a9-e50e24dcca9e
+ *   TX:       6e400002-b5a3-f393-e0a9-e50e24dcca9e
+ *   RX:       6e400003-b5a3-f393-e0a9-e50e24dcca9e
+ *
+ * This service tries both. Uses react-native-ble-plx (Expo compatible).
  */
 
-import RNBluetoothClassic from 'react-native-bluetooth-classic';
+import {BleManager} from 'react-native-ble-plx';
 import {PermissionsAndroid, Platform} from 'react-native';
 
-const OBDLINK_NAME_PATTERN = /OBDLink/i;
-const CONNECT_TIMEOUT_MS = 10000;
+// Known OBDLink BLE service/characteristic UUIDs
+const UART_PROFILES = [
+  {
+    label: 'OBDLink FFF0',
+    service: '0000fff0-0000-1000-8000-00805f9b34fb',
+    tx: '0000fff1-0000-1000-8000-00805f9b34fb',
+    rx: '0000fff2-0000-1000-8000-00805f9b34fb',
+  },
+  {
+    label: 'Nordic UART',
+    service: '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+    tx: '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+    rx: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+  },
+];
+
+const OBDLINK_NAME_PATTERN = /OBDLink|OBD|ELM327|Vgate|OBDII/i;
+const SCAN_TIMEOUT_MS = 10000;
+const READ_TIMEOUT_MS = 5000;
 
 class BluetoothService {
   constructor() {
+    this._manager = new BleManager();
     this._device = null;
+    this._profile = null; // matched UART profile
+    this._rxBuffer = '';
+    this._rxResolve = null;
     this._subscription = null;
   }
 
@@ -28,111 +56,156 @@ class BluetoothService {
     return this._device?.name || null;
   }
 
-  get deviceAddress() {
-    return this._device?.address || null;
+  get deviceId() {
+    return this._device?.id || null;
   }
 
   /**
-   * Request Android Bluetooth + location permissions (required for discovery).
-   * Returns true if all granted.
+   * Request Android BLE permissions.
    */
   async requestPermissions() {
     if (Platform.OS !== 'android') return true;
 
-    const grants = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+    const perms = [
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-    ]);
+    ];
+    // Android 12+ needs BLUETOOTH_SCAN and BLUETOOTH_CONNECT
+    if (Platform.Version >= 31) {
+      perms.push(
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      );
+    }
 
+    const grants = await PermissionsAndroid.requestMultiple(perms);
     return Object.values(grants).every(
       g => g === PermissionsAndroid.RESULTS.GRANTED,
     );
   }
 
   /**
-   * Check if Bluetooth is enabled on the device.
+   * Check if Bluetooth is powered on.
    */
   async isBluetoothEnabled() {
-    try {
-      return await RNBluetoothClassic.isBluetoothEnabled();
-    } catch {
-      return false;
-    }
+    const state = await this._manager.state();
+    if (state === 'PoweredOn') return true;
+
+    // Wait briefly for it to power on
+    return new Promise(resolve => {
+      const sub = this._manager.onStateChange(s => {
+        if (s === 'PoweredOn') {
+          sub.remove();
+          resolve(true);
+        }
+      }, true);
+      setTimeout(() => {
+        sub.remove();
+        resolve(false);
+      }, 3000);
+    });
   }
 
   /**
-   * List already-paired Bluetooth devices. Filters to OBDLink if found.
-   * Returns [{name, address, id}]
+   * Scan for BLE devices. Calls onDeviceFound for each discovered device.
+   * Returns array of all discovered devices after timeout.
    */
-  async getPairedDevices() {
-    const devices = await RNBluetoothClassic.getBondedDevices();
-    return devices.map(d => ({
-      name: d.name || 'Unknown',
-      address: d.address,
-      id: d.id || d.address,
-      isOBDLink: OBDLINK_NAME_PATTERN.test(d.name || ''),
-    }));
-  }
+  async scanForDevices(onDeviceFound) {
+    const discovered = new Map();
 
-  /**
-   * Start Bluetooth discovery for unpaired devices.
-   * Returns a promise that resolves with discovered devices after ~12s.
-   */
-  async discoverDevices(onDeviceFound) {
-    const discovered = [];
-    try {
-      const subscription = RNBluetoothClassic.onDeviceDiscovered(device => {
+    return new Promise((resolve) => {
+      this._manager.startDeviceScan(null, {allowDuplicates: false}, (error, device) => {
+        if (error) {
+          console.warn('[BLE] Scan error:', error.message);
+          return;
+        }
+        if (!device || !device.name) return;
+        if (discovered.has(device.id)) return;
+
         const entry = {
-          name: device.name || 'Unknown',
-          address: device.address,
-          id: device.id || device.address,
-          isOBDLink: OBDLINK_NAME_PATTERN.test(device.name || ''),
+          id: device.id,
+          name: device.name,
+          rssi: device.rssi,
+          isOBDLink: OBDLINK_NAME_PATTERN.test(device.name),
         };
-        discovered.push(entry);
+        discovered.set(device.id, entry);
         if (onDeviceFound) onDeviceFound(entry);
       });
 
-      await RNBluetoothClassic.startDiscovery();
-
-      // Discovery runs for ~12s on Android
-      await new Promise(resolve => setTimeout(resolve, 12000));
-
-      try {
-        await RNBluetoothClassic.cancelDiscovery();
-      } catch {
-        // Already finished
-      }
-      subscription.remove();
-    } catch (err) {
-      console.warn('[BT] Discovery error:', err.message);
-    }
-
-    return discovered;
+      setTimeout(() => {
+        this._manager.stopDeviceScan();
+        resolve(Array.from(discovered.values()));
+      }, SCAN_TIMEOUT_MS);
+    });
   }
 
   /**
-   * Connect to a device by address. Establishes RFCOMM serial channel.
+   * Connect to a BLE device by ID. Discovers services and finds the
+   * UART characteristic pair for serial OBD communication.
    */
-  async connect(address) {
+  async connect(deviceId) {
     if (this._device) {
       await this.disconnect();
     }
 
-    const device = await RNBluetoothClassic.connectToDevice(address, {
-      connectorType: 'rfcomm',
-      delimiter: '>',
+    // Connect
+    const device = await this._manager.connectToDevice(deviceId, {
+      requestMTU: 512,
+      timeout: 10000,
     });
+    await device.discoverAllServicesAndCharacteristics();
 
-    const isConnected = await device.isConnected();
-    if (!isConnected) {
-      throw new Error('Failed to establish RFCOMM connection');
+    // Find matching UART profile
+    const services = await device.services();
+    const serviceUUIDs = services.map(s => s.uuid.toLowerCase());
+
+    let matched = null;
+    for (const profile of UART_PROFILES) {
+      if (serviceUUIDs.includes(profile.service.toLowerCase())) {
+        matched = profile;
+        break;
+      }
+    }
+
+    if (!matched) {
+      await device.cancelConnection();
+      throw new Error(
+        `Device "${device.name}" does not expose a known OBD UART service. ` +
+        `Found services: ${serviceUUIDs.join(', ')}`,
+      );
     }
 
     this._device = device;
+    this._profile = matched;
+
+    // Subscribe to RX notifications (adapter → phone)
+    this._subscription = device.monitorCharacteristicForService(
+      matched.service,
+      matched.rx,
+      (error, characteristic) => {
+        if (error) {
+          console.warn('[BLE] RX error:', error.message);
+          return;
+        }
+        if (characteristic?.value) {
+          // Value is base64 encoded
+          const decoded = atob(characteristic.value);
+          this._rxBuffer += decoded;
+
+          // If we have a pending read and the prompt arrived, resolve it
+          if (this._rxResolve && this._rxBuffer.includes('>')) {
+            const resolve = this._rxResolve;
+            this._rxResolve = null;
+            resolve(this._rxBuffer);
+            this._rxBuffer = '';
+          }
+        }
+      },
+    );
+
     return {
       name: device.name,
-      address: device.address,
+      id: device.id,
+      profile: matched.label,
       connected: true,
     };
   }
@@ -147,70 +220,81 @@ class BluetoothService {
     }
     if (this._device) {
       try {
-        await this._device.disconnect();
+        await this._device.cancelConnection();
       } catch {
         // Already disconnected
       }
       this._device = null;
+      this._profile = null;
     }
+    this._rxBuffer = '';
+    this._rxResolve = null;
   }
 
   /**
-   * Send a raw command string to the adapter and read the response.
+   * Send a command string to the OBD adapter and wait for the response.
    * Appends \r automatically. Waits for the ELM327 '>' prompt.
    */
   async sendCommand(command) {
-    if (!this._device) {
+    if (!this._device || !this._profile) {
       throw new Error('Not connected to any device');
     }
 
-    // Clear any pending data
-    try {
-      await this._device.clear();
-    } catch {
-      // Ignore clear errors
-    }
+    // Clear pending buffer
+    this._rxBuffer = '';
+    this._rxResolve = null;
 
-    await this._device.write(command + '\r', 'ascii');
+    // Encode command + carriage return as base64
+    const payload = btoa(command + '\r');
 
-    // Read until we get the '>' prompt (ELM327 ready signal)
-    const response = await this._readUntilPrompt();
-    return response;
-  }
+    // Write to TX characteristic
+    await this._device.writeCharacteristicWithResponseForService(
+      this._profile.service,
+      this._profile.tx,
+      payload,
+    );
 
-  /**
-   * Read serial data until the ELM327 '>' prompt appears.
-   * Timeout after 5 seconds.
-   */
-  async _readUntilPrompt() {
-    let buffer = '';
-    const deadline = Date.now() + 5000;
+    // Wait for response (until '>' prompt or timeout)
+    const raw = await this._waitForPrompt();
 
-    while (Date.now() < deadline) {
-      try {
-        const chunk = await this._device.read();
-        if (chunk) {
-          buffer += chunk;
-          if (buffer.includes('>')) {
-            break;
-          }
-        }
-      } catch {
-        break;
-      }
-
-      // Small delay to avoid busy loop
-      await new Promise(r => setTimeout(r, 50));
-    }
-
-    // Clean up: remove echo, prompt, whitespace
-    return buffer
+    // Clean up response: remove echo, prompt, extra whitespace
+    return raw
       .replace(/>/g, '')
       .replace(/\r/g, '\n')
       .split('\n')
       .map(line => line.trim())
-      .filter(line => line.length > 0)
+      .filter(line => line.length > 0 && line !== command)
       .join('\n');
+  }
+
+  /**
+   * Wait for the ELM327 '>' prompt in the RX buffer.
+   */
+  _waitForPrompt() {
+    // Check if it's already in the buffer
+    if (this._rxBuffer.includes('>')) {
+      const result = this._rxBuffer;
+      this._rxBuffer = '';
+      return Promise.resolve(result);
+    }
+
+    return new Promise((resolve, reject) => {
+      this._rxResolve = resolve;
+
+      setTimeout(() => {
+        if (this._rxResolve === resolve) {
+          this._rxResolve = null;
+          // Return whatever we have even if no prompt
+          const partial = this._rxBuffer;
+          this._rxBuffer = '';
+          if (partial.length > 0) {
+            resolve(partial);
+          } else {
+            reject(new Error('Timeout waiting for adapter response'));
+          }
+        }
+      }, READ_TIMEOUT_MS);
+    });
   }
 }
 
