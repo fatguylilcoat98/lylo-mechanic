@@ -15,15 +15,12 @@
       },
       "package": "com.goodneighborguard.lylomechanic",
       "permissions": [
-        "BLUETOOTH",
-        "BLUETOOTH_ADMIN",
-        "BLUETOOTH_CONNECT",
-        "BLUETOOTH_SCAN",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_CONNECT"
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "plugins": [
@@ -31,7 +28,10 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 23
+            "minSdkVersion": 23,
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "kotlinVersion": "1.9.24"
           }
         }
       ],
