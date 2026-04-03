@@ -67,26 +67,31 @@ class OBDService {
    * Returns adapter info string.
    */
   async initialize() {
-    // Reset
-    const resetResp = await BluetoothService.sendCommand('ATZ');
+    try {
+      // Reset
+      const resetResp = await BluetoothService.sendCommand('ATZ');
 
-    // Configure for optimal OBD communication
-    await BluetoothService.sendCommand('ATE0');   // Echo off
-    await BluetoothService.sendCommand('ATL0');   // Linefeeds off
-    await BluetoothService.sendCommand('ATS0');   // Spaces off
-    await BluetoothService.sendCommand('ATH0');   // Headers off
-    await BluetoothService.sendCommand('ATSP0');  // Auto protocol
+      // Configure for optimal OBD communication
+      await BluetoothService.sendCommand('ATE0');   // Echo off
+      await BluetoothService.sendCommand('ATL0');   // Linefeeds off
+      await BluetoothService.sendCommand('ATS0');   // Spaces off
+      await BluetoothService.sendCommand('ATH0');   // Headers off
+      await BluetoothService.sendCommand('ATSP0');  // Auto protocol
 
-    // Detect protocol with a test query
-    await BluetoothService.sendCommand('0100');
-    const proto = await BluetoothService.sendCommand('ATDPN');
-    this._protocol = proto.trim();
-    this._initialized = true;
+      // Detect protocol with a test query
+      await BluetoothService.sendCommand('0100');
+      const proto = await BluetoothService.sendCommand('ATDPN');
+      this._protocol = proto.trim();
+      this._initialized = true;
 
-    return {
-      adapter: resetResp.trim(),
-      protocol: this._protocol,
-    };
+      return {
+        adapter: resetResp.trim(),
+        protocol: this._protocol,
+      };
+    } catch (err) {
+      this._initialized = false;
+      throw new Error(`ELM327 initialization failed: ${err.message}`);
+    }
   }
 
   /**

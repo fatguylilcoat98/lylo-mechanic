@@ -6,6 +6,35 @@ import {
 import OBDService from '../services/OBDService';
 import ApiClient from '../services/ApiClient';
 
+// Embedded demo result — works offline with zero Bluetooth and zero API
+const DEMO_RESULT = {
+  vehicle: {year: 2017, make: 'Honda', model: 'Civic', engine: '1.5L Turbo'},
+  diagnosis: {
+    headline: 'Catalytic Converter Efficiency Below Threshold',
+    confidence: 82,
+    severity: 'moderate',
+    summary: 'Code P0420 indicates the catalytic converter on Bank 1 is not operating '
+      + 'at expected efficiency. This is commonly triggered by a failing catalytic converter, '
+      + 'but can also be caused by an exhaust leak, faulty O2 sensor, or engine misfire.',
+    dtcs: [{code: 'P0420', description: 'Catalyst System Efficiency Below Threshold (Bank 1)'}],
+    possible_causes: [
+      'Worn or failing catalytic converter',
+      'Faulty downstream O2 sensor (Bank 1, Sensor 2)',
+      'Exhaust leak before or after catalytic converter',
+      'Engine misfire causing unburnt fuel to damage catalyst',
+    ],
+    recommended_actions: [
+      'Inspect exhaust system for leaks — check gaskets, flex pipe, and welds',
+      'Test downstream O2 sensor response time and voltage range',
+      'Check for engine misfires (Mode $06 data) that could damage catalyst',
+      'If converter is confirmed failed, replacement cost is typically $800-$1,500 (parts + labor)',
+    ],
+    safety_note: 'Safe to drive short-term. Do not ignore — a failed catalytic converter '
+      + 'will cause emissions test failure and may damage O2 sensors over time.',
+    diy_difficulty: 'Intermediate (sensor testing) to Advanced (converter replacement)',
+  },
+};
+
 const DEMO_VEHICLE = {
   year: 2017,
   make: 'Honda',
@@ -36,19 +65,31 @@ export default function ScanScreen({route, navigation}) {
     setError(null);
 
     if (isDemo) {
-      // Demo mode — run a backend scenario
-      addLog('Demo mode — running scenario P0420...', 'info');
+      // Demo mode — works offline with zero Bluetooth and zero API
+      addLog('Demo mode — P0420 catalytic converter scenario', 'info');
+      setPhase('sending');
+      addLog('Running diagnostic pipeline...', 'info');
+
+      // Try backend first, fall back to embedded mock data
+      let result;
       try {
-        addLog('Sending to LYLO diagnostic engine...', 'info');
-        setPhase('sending');
-        const result = await ApiClient.diagnoseScenario('p0420_not_what_it_seems');
-        addLog('Diagnosis complete.', 'success');
-        navigation.replace('Results', {result});
+        const alive = await ApiClient.ping();
+        if (alive) {
+          addLog('Backend connected — running live scenario...', 'info');
+          result = await ApiClient.diagnoseScenario('p0420_not_what_it_seems');
+        } else {
+          addLog('Backend offline — using embedded demo data', 'info');
+          result = DEMO_RESULT;
+        }
       } catch (err) {
-        setError(`Demo failed: ${err.message}`);
-        addLog(`Error: ${err.message}`, 'error');
-        setPhase('vehicle');
+        addLog('Backend unavailable — using embedded demo data', 'info');
+        result = DEMO_RESULT;
       }
+
+      // Brief delay so user can read the log
+      await new Promise(r => setTimeout(r, 800));
+      addLog('Diagnosis complete.', 'success');
+      navigation.replace('Results', {result});
       return;
     }
 

@@ -40,12 +40,26 @@ const READ_TIMEOUT_MS = 5000;
 
 class BluetoothService {
   constructor() {
-    this._manager = new BleManager();
+    // Lazy-init BleManager — do NOT create at import time.
+    // On Android 12+ creating BleManager before permissions crashes the app.
+    this._manager = null;
     this._device = null;
     this._profile = null; // matched UART profile
     this._rxBuffer = '';
     this._rxResolve = null;
     this._subscription = null;
+  }
+
+  _getManager() {
+    if (!this._manager) {
+      try {
+        this._manager = new BleManager();
+      } catch (err) {
+        console.warn('[BLE] Failed to create BleManager:', err.message);
+        throw new Error('Bluetooth is not available on this device.');
+      }
+    }
+    return this._manager;
   }
 
   get connected() {
@@ -87,12 +101,12 @@ class BluetoothService {
    * Check if Bluetooth is powered on.
    */
   async isBluetoothEnabled() {
-    const state = await this._manager.state();
+    const state = await this._getManager().state();
     if (state === 'PoweredOn') return true;
 
     // Wait briefly for it to power on
     return new Promise(resolve => {
-      const sub = this._manager.onStateChange(s => {
+      const sub = this._getManager().onStateChange(s => {
         if (s === 'PoweredOn') {
           sub.remove();
           resolve(true);
@@ -113,7 +127,7 @@ class BluetoothService {
     const discovered = new Map();
 
     return new Promise((resolve) => {
-      this._manager.startDeviceScan(null, {allowDuplicates: false}, (error, device) => {
+      this._getManager().startDeviceScan(null, {allowDuplicates: false}, (error, device) => {
         if (error) {
           console.warn('[BLE] Scan error:', error.message);
           return;
@@ -132,7 +146,7 @@ class BluetoothService {
       });
 
       setTimeout(() => {
-        this._manager.stopDeviceScan();
+        this._getManager().stopDeviceScan();
         resolve(Array.from(discovered.values()));
       }, SCAN_TIMEOUT_MS);
     });
@@ -144,15 +158,20 @@ class BluetoothService {
    */
   async connect(deviceId) {
     if (this._device) {
-      await this.disconnect();
+      try { await this.disconnect(); } catch (e) { /* ignore */ }
     }
 
-    // Connect
-    const device = await this._manager.connectToDevice(deviceId, {
-      requestMTU: 512,
-      timeout: 10000,
-    });
-    await device.discoverAllServicesAndCharacteristics();
+    // Connect — wrapped in try/catch to prevent app crash
+    let device;
+    try {
+      device = await this._getManager().connectToDevice(deviceId, {
+        requestMTU: 512,
+        timeout: 10000,
+      });
+      await device.discoverAllServicesAndCharacteristics();
+    } catch (err) {
+      throw new Error(`BLE connection failed: ${err.message}`);
+    }
 
     // Find matching UART profile
     const services = await device.services();
