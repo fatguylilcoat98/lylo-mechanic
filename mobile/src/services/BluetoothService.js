@@ -18,6 +18,43 @@
 import {BleManager} from 'react-native-ble-plx';
 import {PermissionsAndroid, Platform} from 'react-native';
 
+// ── Base64 polyfill ──────────────────────────────────────────────────────
+// React Native's Hermes engine does NOT provide global atob/btoa.
+// BLE characteristics exchange data as base64 strings, so we need these.
+// This was the crash: tapping "connect" fired btoa() or atob() which
+// threw ReferenceError and killed the app.
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
+function _btoa(input) {
+  let str = String(input);
+  let output = '';
+  for (let i = 0; i < str.length; i += 3) {
+    const a = str.charCodeAt(i);
+    const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+    const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+    output += chars[(a >> 2) & 63];
+    output += chars[((a << 4) | (b >> 4)) & 63];
+    output += i + 1 < str.length ? chars[((b << 2) | (c >> 6)) & 63] : '=';
+    output += i + 2 < str.length ? chars[c & 63] : '=';
+  }
+  return output;
+}
+
+function _atob(input) {
+  let str = String(input).replace(/=+$/, '');
+  let output = '';
+  for (let i = 0; i < str.length; i += 4) {
+    const a = chars.indexOf(str[i]);
+    const b = chars.indexOf(str[i + 1]);
+    const c = chars.indexOf(str[i + 2]);
+    const d = chars.indexOf(str[i + 3]);
+    output += String.fromCharCode(((a << 2) | (b >> 4)) & 255);
+    if (c !== -1) output += String.fromCharCode(((b << 4) | (c >> 2)) & 255);
+    if (d !== -1) output += String.fromCharCode(((c << 6) | d) & 255);
+  }
+  return output;
+}
+
 // Known OBDLink BLE service/characteristic UUIDs
 const UART_PROFILES = [
   {
@@ -207,7 +244,7 @@ class BluetoothService {
         }
         if (characteristic?.value) {
           // Value is base64 encoded
-          const decoded = atob(characteristic.value);
+          const decoded = _atob(characteristic.value);
           this._rxBuffer += decoded;
 
           // If we have a pending read and the prompt arrived, resolve it
@@ -264,7 +301,7 @@ class BluetoothService {
     this._rxResolve = null;
 
     // Encode command + carriage return as base64
-    const payload = btoa(command + '\r');
+    const payload = _btoa(command + '\r');
 
     // Write to TX characteristic
     await this._device.writeCharacteristicWithResponseForService(
