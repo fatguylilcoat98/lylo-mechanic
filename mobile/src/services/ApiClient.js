@@ -7,8 +7,8 @@
  * This client sends raw OBD data and receives a MechanicResponse.
  */
 
-// Default to local development. Change for production.
-const DEFAULT_BASE_URL = 'http://10.0.2.2:5050'; // Android emulator → host machine
+// Production backend on Render
+const DEFAULT_BASE_URL = 'https://lylo-mechanic.onrender.com';
 
 class ApiClient {
   constructor(baseUrl = DEFAULT_BASE_URL) {
