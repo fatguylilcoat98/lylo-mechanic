@@ -68,15 +68,15 @@ export default function ScanScreen({route, navigation}) {
       // Demo mode — works offline with zero Bluetooth and zero API
       addLog('Demo mode — P0420 catalytic converter scenario', 'info');
       setPhase('sending');
-      addLog('Running diagnostic pipeline...', 'info');
+      addLog('Running quick check...', 'info');
 
-      // Try backend first, fall back to embedded mock data
+      // Try backend quick-check first, fall back to embedded mock data
       let result;
       try {
         const alive = await ApiClient.ping();
         if (alive) {
-          addLog('Backend connected — running live scenario...', 'info');
-          result = await ApiClient.diagnoseScenario('p0420_not_what_it_seems');
+          addLog('Backend connected — running quick check...', 'info');
+          result = await ApiClient.quickCheck('P0420');
         } else {
           addLog('Backend offline — using embedded demo data', 'info');
           result = DEMO_RESULT;
@@ -93,7 +93,7 @@ export default function ScanScreen({route, navigation}) {
       return;
     }
 
-    // Live scan
+    // Live OBD scan
     try {
       addLog('Starting OBD-II full vehicle scan...', 'info');
 
@@ -114,12 +114,12 @@ export default function ScanScreen({route, navigation}) {
         addLog('No stored fault codes found.', 'success');
       }
 
-      // Send to backend
+      // Send DTCs through quick-check MVP endpoint
       setPhase('sending');
-      addLog('Sending data to LYLO diagnostic engine...', 'info');
+      addLog('Analyzing codes with LYLO...', 'info');
 
-      const result = await ApiClient.diagnose(data, vehicle);
-      addLog('Diagnosis complete.', 'success');
+      const result = await ApiClient.quickCheckFromScan(data);
+      addLog('Diagnosis complete — ShopScript ready.', 'success');
 
       navigation.replace('Results', {result});
     } catch (err) {

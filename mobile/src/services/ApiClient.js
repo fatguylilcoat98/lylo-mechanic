@@ -82,6 +82,77 @@ class ApiClient {
   }
 
   /**
+   * Quick Check MVP — send DTC codes or symptom text to the new quick-check endpoint.
+   * Returns ShopScript-ready results: what's wrong, urgency, cost, difficulty,
+   * what to say at the shop, and red flags.
+   *
+   * @param {string} input - A DTC code ("P0420"), multiple codes ("P0420 P0171"),
+   *                         or symptom text ("rough idle, check engine light")
+   * @returns {object} {input, input_type, results: [{code, whats_wrong, urgency, cost, difficulty, shop_script, red_flags}]}
+   */
+  async quickCheck(input) {
+    const resp = await fetch(`${this._baseUrl}/api/v1/quick/check`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({input}),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`Quick check failed (${resp.status}): ${text}`);
+    }
+
+    return resp.json();
+  }
+
+  /**
+   * Quick Check from OBD scan data — extracts DTCs from a fullScan() result
+   * and sends them through the quick-check MVP endpoint.
+   *
+   * @param {object} scanData - Result from OBDService.fullScan()
+   * @returns {object} Quick check results with ShopScript
+   */
+  async quickCheckFromScan(scanData) {
+    const dtcCodes = (scanData.raw_dtcs || []).map(d => d.code).filter(Boolean);
+
+    if (dtcCodes.length === 0) {
+      // No codes found — return a helpful "clean" result
+      return {
+        input: 'OBD Scan (no codes)',
+        input_type: 'obd_scan',
+        results: [{
+          code: 'NO CODES',
+          whats_wrong: {
+            summary: 'No diagnostic trouble codes found.',
+            explanation: 'Your vehicle\'s computer has no stored fault codes. If you\'re experiencing symptoms, they may not have triggered a code yet.',
+            check_first: [
+              'If the check engine light is on but no codes found, codes may have been recently cleared',
+              'Some issues (brakes, tires, suspension) don\'t trigger OBD codes',
+              'If symptoms persist, describe them for a symptom-based check',
+            ],
+          },
+          urgency: {
+            level: 'SAFE TO DRIVE',
+            color: 'green',
+            message: 'No fault codes detected. If you\'re experiencing symptoms, get a visual inspection.',
+          },
+          cost: {diy: 'N/A', shop: '$0 – $100 (inspection)', note: 'A basic inspection is typically free or low cost.'},
+          difficulty: {level: 'N/A', label: 'No repair needed based on codes', icon: 'check'},
+          shop_script: '"I had my car scanned and no codes came up, but I\'m noticing [describe symptom]. Can you do a visual inspection and let me know if you see anything? I\'d like a written estimate before any work is done."',
+          red_flags: [
+            'If a shop says they need to run expensive diagnostics when there are no codes, ask what specifically they\'re testing for.',
+            'Don\'t let anyone upsell you on repairs when there are no fault codes unless they can show you the problem.',
+          ],
+        }],
+      };
+    }
+
+    // Send all DTCs as a single input string
+    const input = dtcCodes.join(' ');
+    return this.quickCheck(input);
+  }
+
+  /**
    * Health check — is the backend running?
    */
   async ping() {
