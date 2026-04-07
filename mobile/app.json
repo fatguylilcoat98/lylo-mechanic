@@ -7,20 +7,21 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#0D1117"
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0a0c0f"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0D1117"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0c0f"
       },
       "package": "com.goodneighborguard.lylomechanic",
       "permissions": [
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
         "android.permission.BLUETOOTH_CONNECT",
-        "android.permission.BLUETOOTH_SCAN",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.BLUETOOTH_SCAN"
       ]
     },
     "plugins": [
@@ -42,7 +43,8 @@
           "modes": [
             "central"
           ],
-          "bluetoothAlwaysPermission": "LYLO Mechanic needs Bluetooth to connect to your OBDLink adapter."
+          "bluetoothAlwaysPermission": "LYLO Mechanic needs Bluetooth to connect to your OBDLink adapter.",
+          "neverForLocation": true
         }
       ]
     ],

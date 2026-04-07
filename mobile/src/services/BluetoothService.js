@@ -117,21 +117,22 @@ class BluetoothService {
   async requestPermissions() {
     if (Platform.OS !== 'android') return true;
 
-    const perms = [
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-    ];
-    // Android 12+ needs BLUETOOTH_SCAN and BLUETOOTH_CONNECT
     if (Platform.Version >= 31) {
-      perms.push(
+      // Android 12+ — only need BLUETOOTH_SCAN + BLUETOOTH_CONNECT, no location
+      const grants = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      ]);
+      return Object.values(grants).every(
+        g => g === PermissionsAndroid.RESULTS.GRANTED,
       );
     }
 
-    const grants = await PermissionsAndroid.requestMultiple(perms);
-    return Object.values(grants).every(
-      g => g === PermissionsAndroid.RESULTS.GRANTED,
+    // Android 11 and below — BLE scanning requires location
+    const grant = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
     );
+    return grant === PermissionsAndroid.RESULTS.GRANTED;
   }
 
   /**

@@ -1,11 +1,8 @@
-/**
- * The Good Neighbor Guard — LYLO Mechanic
+/*
+ * LYLO Mechanic — The Good Neighbor Guard
  * Christopher Hughes · Sacramento, CA
- * AI Collaborators: Claude · GPT · Gemini · Groq
+ * Built with Claude · GPT · Gemini · Groq
  * Truth · Safety · We Got Your Back
- *
- * ResultsScreen — MVP 6-panel layout
- * Shows: what's wrong, urgency, cost, difficulty, ShopScript, red flags
  */
 
 import React, {useState} from 'react';
@@ -14,16 +11,30 @@ import {
   Share, Clipboard,
 } from 'react-native';
 
+const C = {
+  bg: '#0a0c0f',
+  panel: '#0f1318',
+  border: '#1e2a38',
+  text: '#c8d6e2',
+  textDim: '#4e6070',
+  textBright: '#e8f4ff',
+  accent: '#1a8fff',
+  success: '#00c87a',
+  warning: '#f0b429',
+  danger: '#e03c3c',
+  gold: '#c8a84b',
+};
+
 const URGENCY_STYLES = {
-  green:  {bg: '#0D3D1B', border: '#238636', text: '#3FB950'},
-  orange: {bg: '#3D2E00', border: '#9E6A03', text: '#D29922'},
-  red:    {bg: '#3D1014', border: '#DA3633', text: '#F85149'},
+  green:  {bg: C.success + '18', border: C.success + '44', text: C.success},
+  orange: {bg: C.warning + '18', border: C.warning + '44', text: C.warning},
+  red:    {bg: C.danger + '18', border: C.danger + '44', text: C.danger},
 };
 
 const DIFFICULTY_COLORS = {
-  Easy: '#3FB950',
-  Medium: '#D29922',
-  Hard: '#F85149',
+  Easy: C.success,
+  Medium: C.warning,
+  Hard: C.danger,
 };
 
 function Card({title, icon, children}) {
@@ -44,7 +55,7 @@ function ResultPanel({result, onCopyScript}) {
   const c = result.cost || {};
   const d = result.difficulty || {};
   const uStyle = URGENCY_STYLES[u.color] || URGENCY_STYLES.orange;
-  const dColor = DIFFICULTY_COLORS[d.level] || '#8B949E';
+  const dColor = DIFFICULTY_COLORS[d.level] || C.textDim;
 
   return (
     <View>
@@ -98,7 +109,7 @@ function ResultPanel({result, onCopyScript}) {
         {c.dealer ? (
           <View style={s.costDealerRow}>
             <Text style={s.costLabel}>DEALER</Text>
-            <Text style={[s.costValue, {color: '#D29922'}]}>{c.dealer}</Text>
+            <Text style={[s.costValue, {color: C.warning}]}>{c.dealer}</Text>
           </View>
         ) : null}
         {c.note ? <Text style={s.costNote}>{c.note}</Text> : null}
@@ -107,9 +118,11 @@ function ResultPanel({result, onCopyScript}) {
       {/* 4. Fix Difficulty */}
       <Card title="Fix Difficulty" icon={"\u{1F6E0}"}>
         <View style={s.difficultyRow}>
-          <Text style={[s.difficultyLevel, {color: dColor}]}>
-            {d.level || 'Unknown'}
-          </Text>
+          <View style={[s.difficultyBadge, {backgroundColor: dColor + '22'}]}>
+            <Text style={[s.difficultyLevel, {color: dColor}]}>
+              {d.level || 'Unknown'}
+            </Text>
+          </View>
           <Text style={s.difficultyLabel}>{d.label || ''}</Text>
         </View>
       </Card>
@@ -119,7 +132,10 @@ function ResultPanel({result, onCopyScript}) {
         <View style={s.shopScriptBox}>
           <Text style={s.shopScriptText}>{result.shop_script || ''}</Text>
         </View>
-        <TouchableOpacity style={s.copyBtn} onPress={() => onCopyScript(result.shop_script)}>
+        <TouchableOpacity
+          style={s.copyBtn}
+          onPress={() => onCopyScript(result.shop_script)}
+          activeOpacity={0.85}>
           <Text style={s.copyBtnText}>Copy to Clipboard</Text>
         </TouchableOpacity>
       </Card>
@@ -141,11 +157,12 @@ function ResultPanel({result, onCopyScript}) {
 export default function ResultsScreen({route, navigation}) {
   const data = route.params?.result;
   const [activeTab, setActiveTab] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   if (!data || !data.results || data.results.length === 0) {
     return (
-      <View style={s.container}>
-        <Text style={s.errorText}>No diagnosis result available.</Text>
+      <View style={[s.container, {justifyContent: 'center', alignItems: 'center'}]}>
+        <Text style={{color: C.danger, fontSize: 16}}>No diagnosis result available.</Text>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Text style={s.backBtnText}>Go Back</Text>
         </TouchableOpacity>
@@ -160,9 +177,9 @@ export default function ResultsScreen({route, navigation}) {
     if (!script) return;
     try {
       Clipboard.setString(script);
-    } catch {
-      // Fallback — some RN versions need different clipboard API
-    }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
   };
 
   const handleShare = async () => {
@@ -175,17 +192,16 @@ export default function ResultsScreen({route, navigation}) {
       `Cost (shop): ${r.cost?.shop || ''}`,
       `Difficulty: ${r.difficulty?.level || ''}`,
       '',
-      'What to say:',
+      'What to say at the shop:',
       r.shop_script || '',
       '',
       '— LYLO Mechanic by The Good Neighbor Guard',
+      'We Got Your Back',
     ].join('\n');
 
     try {
       await Share.share({message: text});
-    } catch {
-      // User cancelled
-    }
+    } catch {}
   };
 
   return (
@@ -198,7 +214,7 @@ export default function ResultsScreen({route, navigation}) {
         ) : null}
       </View>
 
-      {/* Note banner for symptom matches */}
+      {/* Note banner */}
       {data.note ? (
         <View style={s.noteBanner}>
           <Text style={s.noteText}>{data.note}</Text>
@@ -224,18 +240,32 @@ export default function ResultsScreen({route, navigation}) {
       {/* Result panels */}
       <ResultPanel result={activeResult} onCopyScript={handleCopyScript} />
 
+      {/* Copied toast */}
+      {copied && (
+        <View style={s.copiedToast}>
+          <Text style={s.copiedText}>{'\u2705'} Copied to clipboard</Text>
+        </View>
+      )}
+
       {/* Actions */}
       <View style={s.actionRow}>
-        <TouchableOpacity style={s.shareBtn} onPress={handleShare}>
-          <Text style={s.shareBtnText}>Share Results</Text>
+        <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.85}>
+          <Text style={s.shareBtnText}>{'\u{1F4E4}'} Share Results</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
         style={s.backBtn}
-        onPress={() => navigation.popToTop()}>
+        onPress={() => navigation.popToTop()}
+        activeOpacity={0.85}>
         <Text style={s.backBtnText}>Check Another Issue</Text>
       </TouchableOpacity>
+
+      {/* Footer */}
+      <View style={s.footer}>
+        <Text style={s.footerBrand}>The Good Neighbor Guard</Text>
+        <Text style={s.footerNote}>Not a substitute for professional diagnosis.</Text>
+      </View>
 
       <View style={{height: 40}} />
     </ScrollView>
@@ -243,58 +273,57 @@ export default function ResultsScreen({route, navigation}) {
 }
 
 const s = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#0D1117'},
+  container: {flex: 1, backgroundColor: C.bg},
   content: {padding: 16},
-  errorText: {color: '#F85149', fontSize: 16, textAlign: 'center', marginTop: 40},
 
   // Header
-  header: {alignItems: 'center', marginBottom: 16},
+  header: {alignItems: 'center', marginBottom: 16, paddingTop: 8},
   headerCode: {
-    fontSize: 32, fontWeight: '800', color: '#58A6FF',
+    fontSize: 32, fontWeight: '800', color: C.accent,
     fontFamily: 'monospace',
   },
-  headerInput: {color: '#8B949E', fontSize: 13, marginTop: 4},
+  headerInput: {color: C.textDim, fontSize: 13, marginTop: 4},
 
   // Note
   noteBanner: {
-    backgroundColor: 'rgba(88,166,255,0.1)', borderRadius: 8,
+    backgroundColor: C.accent + '15', borderRadius: 10,
     padding: 12, marginBottom: 16, borderWidth: 1,
-    borderColor: 'rgba(88,166,255,0.3)',
+    borderColor: C.accent + '33',
   },
-  noteText: {color: '#58A6FF', fontSize: 13, textAlign: 'center'},
+  noteText: {color: C.accent, fontSize: 13, textAlign: 'center'},
 
   // Tabs
   tabs: {flexDirection: 'row', gap: 8, marginBottom: 16, justifyContent: 'center'},
   tab: {
-    backgroundColor: '#161B22', borderRadius: 8, paddingVertical: 8,
-    paddingHorizontal: 16, borderWidth: 1, borderColor: '#21262D',
+    backgroundColor: C.panel, borderRadius: 8, paddingVertical: 8,
+    paddingHorizontal: 16, borderWidth: 1, borderColor: C.border,
   },
-  tabActive: {backgroundColor: '#58A6FF', borderColor: '#58A6FF'},
-  tabText: {color: '#8B949E', fontSize: 14, fontWeight: '600'},
-  tabTextActive: {color: '#000'},
+  tabActive: {backgroundColor: C.accent, borderColor: C.accent},
+  tabText: {color: C.textDim, fontSize: 14, fontWeight: '600'},
+  tabTextActive: {color: '#fff'},
 
   // Card
   card: {
-    backgroundColor: '#161B22', borderRadius: 12, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: '#21262D',
+    backgroundColor: C.panel, borderRadius: 12, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: C.border,
   },
   cardHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: 12},
   cardIcon: {fontSize: 18, marginRight: 8},
   cardTitle: {
-    fontSize: 13, fontWeight: '700', color: '#8B949E',
+    fontSize: 13, fontWeight: '700', color: C.textDim,
     textTransform: 'uppercase', letterSpacing: 1,
   },
 
   // What's wrong
-  summaryText: {color: '#E6EDF3', fontSize: 15, fontWeight: '600', marginBottom: 8},
-  likelyCause: {color: '#8B949E', fontSize: 14, marginBottom: 6},
-  likelyCauseValue: {color: '#E6EDF3', fontWeight: '700'},
-  explanation: {color: '#8B949E', fontSize: 14, lineHeight: 21, marginBottom: 8},
-  otherPossibilities: {color: '#8B949E', fontSize: 13, marginBottom: 8, fontStyle: 'italic'},
+  summaryText: {color: C.textBright, fontSize: 15, fontWeight: '600', marginBottom: 8},
+  likelyCause: {color: C.textDim, fontSize: 14, marginBottom: 6},
+  likelyCauseValue: {color: C.textBright, fontWeight: '700'},
+  explanation: {color: C.text, fontSize: 14, lineHeight: 21, marginBottom: 8},
+  otherPossibilities: {color: C.textDim, fontSize: 13, marginBottom: 8, fontStyle: 'italic'},
   checkFirstBox: {
-    backgroundColor: '#0D1117', borderRadius: 8, padding: 12, marginTop: 4,
+    backgroundColor: C.bg, borderRadius: 8, padding: 12, marginTop: 4,
   },
-  checkFirstItem: {color: '#58A6FF', fontSize: 13, lineHeight: 22},
+  checkFirstItem: {color: C.accent, fontSize: 13, lineHeight: 22},
 
   // Urgency
   urgencyBadge: {
@@ -302,63 +331,77 @@ const s = StyleSheet.create({
     alignSelf: 'flex-start', marginBottom: 8,
   },
   urgencyLevel: {fontSize: 16, fontWeight: '800'},
-  urgencyMsg: {color: '#8B949E', fontSize: 14, lineHeight: 21},
+  urgencyMsg: {color: C.text, fontSize: 14, lineHeight: 21},
 
   // Cost
   costGrid: {flexDirection: 'row', gap: 8, marginBottom: 8},
   costItem: {
-    flex: 1, backgroundColor: '#0D1117', borderRadius: 8,
+    flex: 1, backgroundColor: C.bg, borderRadius: 8,
     padding: 12, alignItems: 'center',
   },
   costLabel: {
-    fontSize: 12, color: '#8B949E', fontWeight: '700',
+    fontSize: 12, color: C.textDim, fontWeight: '700',
     textTransform: 'uppercase', letterSpacing: 0.5,
   },
-  costValue: {fontSize: 18, fontWeight: '700', color: '#3FB950', marginTop: 4},
+  costValue: {fontSize: 18, fontWeight: '700', color: C.success, marginTop: 4},
   costDealerRow: {
-    backgroundColor: '#0D1117', borderRadius: 8, padding: 12,
+    backgroundColor: C.bg, borderRadius: 8, padding: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 8,
   },
-  costNote: {color: '#484F58', fontSize: 12, marginTop: 4},
+  costNote: {color: C.textDim, fontSize: 12, marginTop: 4},
 
   // Difficulty
   difficultyRow: {flexDirection: 'row', alignItems: 'center', gap: 12},
-  difficultyLevel: {fontSize: 20, fontWeight: '800'},
-  difficultyLabel: {color: '#8B949E', fontSize: 14},
+  difficultyBadge: {borderRadius: 8, paddingVertical: 6, paddingHorizontal: 14},
+  difficultyLevel: {fontSize: 18, fontWeight: '800'},
+  difficultyLabel: {color: C.text, fontSize: 14, flex: 1},
 
   // ShopScript
   shopScriptBox: {
-    backgroundColor: '#0D1117', borderLeftWidth: 3, borderLeftColor: '#58A6FF',
+    backgroundColor: C.bg, borderLeftWidth: 3, borderLeftColor: C.accent,
     borderRadius: 8, padding: 16, marginBottom: 12,
   },
   shopScriptText: {
-    color: '#E6EDF3', fontSize: 15, lineHeight: 24, fontStyle: 'italic',
+    color: C.textBright, fontSize: 15, lineHeight: 24, fontStyle: 'italic',
   },
   copyBtn: {
-    backgroundColor: '#21262D', borderRadius: 8, padding: 10,
-    alignItems: 'center', borderWidth: 1, borderColor: '#30363D',
+    backgroundColor: C.accent + '18', borderRadius: 8, padding: 12,
+    alignItems: 'center', borderWidth: 1, borderColor: C.accent + '44',
   },
-  copyBtnText: {color: '#58A6FF', fontSize: 14, fontWeight: '600'},
+  copyBtnText: {color: C.accent, fontSize: 14, fontWeight: '600'},
 
   // Red flags
   redFlagItem: {
-    backgroundColor: 'rgba(248,81,73,0.08)', borderLeftWidth: 3,
-    borderLeftColor: '#F85149', borderRadius: 8, padding: 12,
+    backgroundColor: C.danger + '10', borderLeftWidth: 3,
+    borderLeftColor: C.danger, borderRadius: 8, padding: 12,
     marginBottom: 8,
   },
-  redFlagText: {color: '#E6EDF3', fontSize: 14, lineHeight: 21},
+  redFlagText: {color: C.text, fontSize: 14, lineHeight: 21},
+
+  // Copied toast
+  copiedToast: {
+    backgroundColor: C.success + '22', borderRadius: 8, padding: 10,
+    alignItems: 'center', marginBottom: 12,
+    borderWidth: 1, borderColor: C.success + '44',
+  },
+  copiedText: {color: C.success, fontSize: 13, fontWeight: '600'},
 
   // Actions
   actionRow: {marginTop: 8, marginBottom: 12},
   shareBtn: {
-    backgroundColor: '#161B22', borderRadius: 10, padding: 14,
-    alignItems: 'center', borderWidth: 1, borderColor: '#30363D',
+    backgroundColor: C.panel, borderRadius: 12, padding: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: C.border,
   },
-  shareBtnText: {color: '#E6EDF3', fontSize: 15, fontWeight: '600'},
+  shareBtnText: {color: C.textBright, fontSize: 15, fontWeight: '600'},
   backBtn: {
-    borderWidth: 1, borderColor: '#58A6FF', borderRadius: 10,
+    borderWidth: 1, borderColor: C.accent, borderRadius: 12,
     padding: 14, alignItems: 'center',
   },
-  backBtnText: {color: '#58A6FF', fontSize: 15, fontWeight: '600'},
+  backBtnText: {color: C.accent, fontSize: 15, fontWeight: '600'},
+
+  // Footer
+  footer: {alignItems: 'center', marginTop: 24},
+  footerBrand: {color: C.gold, fontSize: 12, fontWeight: '700'},
+  footerNote: {color: C.textDim, fontSize: 11, marginTop: 2},
 });
