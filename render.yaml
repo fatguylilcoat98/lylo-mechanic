@@ -3,7 +3,7 @@ services:
     name: lylo-mechanic
     runtime: python
     rootDir: .
-    buildCommand: pip install --upgrade pip && pip install .
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: cd backend && gunicorn -w 4 -b 0.0.0.0:$PORT app:app
     envVars:
       - key: ANTHROPIC_API_KEY
