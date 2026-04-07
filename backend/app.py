@@ -14,6 +14,7 @@ from api.routes.tutorial import tutorial_bp
 from api.routes.live import live_bp
 from api.routes.persona import persona_bp
 from api.routes.quick_check import quick_check_bp
+from api.routes.obd2 import obd2_bp
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 CORS(app)
@@ -25,6 +26,7 @@ app.register_blueprint(tutorial_bp, url_prefix="/api/v1/tutorial")
 app.register_blueprint(live_bp, url_prefix="/api/v1/live")
 app.register_blueprint(persona_bp, url_prefix="/api/v1/persona")
 app.register_blueprint(quick_check_bp, url_prefix="/api/v1/quick")
+app.register_blueprint(obd2_bp)  # Registers /obd2 directly
 
 @app.route("/")
 def index():
