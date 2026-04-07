@@ -7,21 +7,7 @@
 
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet, StatusBar} from 'react-native';
-
-// GNG Brand Palette
-const C = {
-  bg: '#0a0c0f',
-  panel: '#0f1318',
-  border: '#1e2a38',
-  text: '#c8d6e2',
-  textDim: '#4e6070',
-  textBright: '#e8f4ff',
-  accent: '#1a8fff',
-  success: '#00c87a',
-  warning: '#f0b429',
-  danger: '#e03c3c',
-  gold: '#c8a84b',
-};
+import {C} from '../constants/colors';
 
 export default function HomeScreen({navigation}) {
   return (
@@ -30,54 +16,61 @@ export default function HomeScreen({navigation}) {
 
       {/* Logo */}
       <View style={s.logoWrap}>
-        <View style={s.iconBg}>
-          <Text style={s.iconText}>L</Text>
+        <View style={s.iconOuter}>
+          <View style={s.iconInner}>
+            <View style={s.iconConnector}>
+              <View style={s.pinRow}>
+                {[0,1,2,3,4].map(i => <View key={i} style={s.pin} />)}
+              </View>
+              <View style={s.pinRow}>
+                {[0,1,2,3,4].map(i => <View key={i} style={s.pin} />)}
+              </View>
+            </View>
+            <View style={s.checkWrap}>
+              <Text style={s.checkmark}>{'\u2713'}</Text>
+            </View>
+          </View>
         </View>
-        <Text style={s.title}>LYLO <Text style={s.titleAccent}>Mechanic</Text></Text>
+
+        <Text style={s.title}>LYLO Mechanic</Text>
         <Text style={s.subtitle}>Know what's wrong before you walk in.</Text>
-        <View style={s.taglineRow}>
-          <View style={s.taglineDot} />
-          <Text style={s.tagline}>Powered by OBDLink MX+</Text>
-        </View>
+        <View style={s.accentLine} />
       </View>
 
-      {/* Main actions */}
-      <View style={s.actionWrap}>
-        <TouchableOpacity
-          style={s.primaryBtn}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('Connect')}>
-          <Text style={s.primaryBtnIcon}>{'\u{1F50C}'}</Text>
-          <Text style={s.primaryBtnText}>Connect to OBDLink</Text>
-        </TouchableOpacity>
+      {/* Main action */}
+      <TouchableOpacity
+        style={s.primaryBtn}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('Connect')}>
+        <Text style={s.primaryBtnText}>Connect to OBDLink</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity
-          style={s.secondaryBtn}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('Scan', {demo: true})}>
-          <Text style={s.secondaryBtnIcon}>{'\u{1F9EA}'}</Text>
-          <Text style={s.secondaryBtnText}>Try Demo Mode</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Demo mode */}
+      <TouchableOpacity
+        style={s.secondaryBtn}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('Scan', {demo: true})}>
+        <Text style={s.secondaryBtnText}>Demo Mode (No Adapter)</Text>
+      </TouchableOpacity>
 
       {/* Feature pills */}
       <View style={s.featureRow}>
-        <View style={s.pill}>
-          <Text style={s.pillText}>{'\u{1F527}'} Diagnosis</Text>
-        </View>
-        <View style={s.pill}>
-          <Text style={s.pillText}>{'\u{1F4B0}'} Cost Range</Text>
-        </View>
-        <View style={s.pill}>
-          <Text style={s.pillText}>{'\u{1F5E3}'} ShopScript</Text>
-        </View>
+        <View style={s.pill}><Text style={s.pillText}>Diagnosis</Text></View>
+        <View style={s.pill}><Text style={s.pillText}>Cost Range</Text></View>
+        <View style={s.pill}><Text style={s.pillText}>ShopScript</Text></View>
+      </View>
+
+      {/* Bluetooth status hint */}
+      <View style={s.statusRow}>
+        <View style={s.statusDot} />
+        <Text style={s.statusText}>Bluetooth Ready</Text>
       </View>
 
       {/* Footer */}
       <View style={s.footer}>
         <Text style={s.footerBrand}>The Good Neighbor Guard</Text>
-        <Text style={s.footerMotto}>Truth · Safety · We Got Your Back</Text>
-        <Text style={s.version}>v1.0.0</Text>
+        <Text style={s.footerTagline}>Truth · Safety · We Got Your Back</Text>
+        <Text style={s.version}>v0.2.0</Text>
       </View>
     </View>
   );
@@ -89,80 +82,76 @@ const s = StyleSheet.create({
     backgroundColor: C.bg,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 28,
   },
 
   // Logo
   logoWrap: {alignItems: 'center', marginBottom: 48},
-  iconBg: {
-    width: 80, height: 80, borderRadius: 20,
-    backgroundColor: C.accent,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20,
+  iconOuter: {
+    width: 100, height: 100, borderRadius: 24,
+    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.accent,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 20,
     shadowColor: C.accent, shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.4, shadowRadius: 16, elevation: 8,
+    shadowOpacity: 0.3, shadowRadius: 16, elevation: 8,
   },
-  iconText: {
-    fontSize: 38, fontWeight: '900', color: C.bg,
+  iconInner: {alignItems: 'center', justifyContent: 'center'},
+  iconConnector: {
+    width: 56, height: 32, backgroundColor: C.accent,
+    borderRadius: 6, paddingVertical: 4, paddingHorizontal: 6,
+    justifyContent: 'center', gap: 3,
   },
-  title: {
-    fontSize: 30, fontWeight: '800', color: C.textBright,
-    letterSpacing: 0.5,
+  pinRow: {flexDirection: 'row', justifyContent: 'space-around'},
+  pin: {width: 5, height: 5, borderRadius: 2.5, backgroundColor: C.bg},
+  checkWrap: {
+    position: 'absolute', bottom: -8, right: -12,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: C.green, alignItems: 'center', justifyContent: 'center',
   },
-  titleAccent: {color: C.accent},
-  subtitle: {
-    fontSize: 15, color: C.text, marginTop: 6,
-  },
-  taglineRow: {
-    flexDirection: 'row', alignItems: 'center', marginTop: 8,
-  },
-  taglineDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: C.success, marginRight: 6,
-  },
-  tagline: {fontSize: 12, color: C.textDim},
+  checkmark: {color: '#fff', fontSize: 12, fontWeight: '900', marginTop: -1},
 
-  // Actions
-  actionWrap: {width: '100%', gap: 12, marginBottom: 32},
+  title: {fontSize: 30, fontWeight: '800', color: C.textBright, letterSpacing: 0.5},
+  subtitle: {fontSize: 15, color: C.text, marginTop: 6},
+  accentLine: {
+    width: 40, height: 3, backgroundColor: C.accent,
+    borderRadius: 2, marginTop: 12,
+  },
+
+  // Buttons
   primaryBtn: {
-    backgroundColor: C.accent,
-    borderRadius: 12, padding: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    shadowColor: C.accent, shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+    gap: 10, backgroundColor: C.accent,
+    paddingVertical: 16, paddingHorizontal: 32, borderRadius: 14,
+    width: '100%', marginBottom: 14,
+    shadowColor: C.accent, shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.35, shadowRadius: 12, elevation: 6,
   },
-  primaryBtnIcon: {fontSize: 18, marginRight: 10},
-  primaryBtnText: {
-    color: '#fff', fontSize: 17, fontWeight: '700',
-  },
+  primaryBtnText: {color: '#fff', fontSize: 17, fontWeight: '700', letterSpacing: 0.3},
+
   secondaryBtn: {
-    backgroundColor: C.panel,
-    borderRadius: 12, padding: 14,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: C.border,
+    paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14,
+    width: '100%', alignItems: 'center', backgroundColor: C.card,
+    marginBottom: 24,
   },
-  secondaryBtnIcon: {fontSize: 16, marginRight: 10},
-  secondaryBtnText: {
-    color: C.text, fontSize: 16, fontWeight: '600',
-  },
+  secondaryBtnText: {color: C.textDim, fontSize: 15, fontWeight: '600'},
 
   // Feature pills
-  featureRow: {
-    flexDirection: 'row', gap: 8, marginBottom: 48,
-  },
+  featureRow: {flexDirection: 'row', gap: 8, marginBottom: 32},
   pill: {
-    backgroundColor: C.panel,
-    borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12,
+    backgroundColor: C.card, borderRadius: 20,
+    paddingVertical: 6, paddingHorizontal: 14,
     borderWidth: 1, borderColor: C.border,
   },
   pillText: {color: C.textDim, fontSize: 12, fontWeight: '600'},
 
+  // Status
+  statusRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  statusDot: {width: 8, height: 8, borderRadius: 4, backgroundColor: C.green},
+  statusText: {color: C.textDim, fontSize: 13, fontWeight: '500'},
+
   // Footer
-  footer: {
-    position: 'absolute', bottom: 36,
-    alignItems: 'center',
-  },
-  footerBrand: {color: C.gold, fontSize: 12, fontWeight: '700', letterSpacing: 0.5},
-  footerMotto: {color: C.textDim, fontSize: 11, marginTop: 2},
-  version: {color: C.border, fontSize: 10, marginTop: 4},
+  footer: {position: 'absolute', bottom: 36, alignItems: 'center'},
+  footerBrand: {color: C.textMuted, fontSize: 13, fontWeight: '600', letterSpacing: 0.3},
+  footerTagline: {color: C.textMuted, fontSize: 11, marginTop: 2},
+  version: {color: C.border, fontSize: 11, marginTop: 6},
 });

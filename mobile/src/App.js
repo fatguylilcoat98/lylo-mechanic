@@ -1,3 +1,10 @@
+/*
+ * LYLO Mechanic — The Good Neighbor Guard
+ * Christopher Hughes · Sacramento, CA
+ * Built with Claude · GPT · Gemini · Groq
+ * Truth · Safety · We Got Your Back
+ */
+
 import React from 'react';
 import {StatusBar} from 'expo-status-bar';
 import {NavigationContainer} from '@react-navigation/native';
@@ -7,18 +14,19 @@ import HomeScreen from './screens/HomeScreen';
 import ConnectScreen from './screens/ConnectScreen';
 import ScanScreen from './screens/ScanScreen';
 import ResultsScreen from './screens/ResultsScreen';
+import {C} from './constants/colors';
 
 const Stack = createNativeStackNavigator();
 
 const THEME = {
   dark: true,
   colors: {
-    primary: '#D4A843',
-    background: '#0D1117',
-    card: '#161B22',
-    text: '#E6EDF3',
-    border: '#30363D',
-    notification: '#D4A843',
+    primary: C.accent,
+    background: C.bg,
+    card: C.card,
+    text: C.textBright,
+    border: C.border,
+    notification: C.accent,
   },
 };
 
@@ -29,30 +37,31 @@ export default function App() {
       <NavigationContainer theme={THEME}>
         <Stack.Navigator
           screenOptions={{
-            headerStyle: {backgroundColor: '#161B22'},
-            headerTintColor: '#D4A843',
-            headerTitleStyle: {fontWeight: '700'},
-            contentStyle: {backgroundColor: '#0D1117'},
+            headerStyle: {backgroundColor: C.card},
+            headerTintColor: C.accent,
+            headerTitleStyle: {fontWeight: '700', letterSpacing: 0.5},
+            contentStyle: {backgroundColor: C.bg},
+            headerShadowVisible: false,
           }}>
           <Stack.Screen
             name="Home"
             component={HomeScreen}
-            options={{title: 'LYLO Mechanic'}}
+            options={{headerShown: false}}
           />
           <Stack.Screen
             name="Connect"
             component={ConnectScreen}
-            options={{title: 'Connect OBDLink'}}
+            options={{title: 'CONNECT OBDLINK'}}
           />
           <Stack.Screen
             name="Scan"
             component={ScanScreen}
-            options={{title: 'Vehicle Scan'}}
+            options={{title: 'VEHICLE SCAN'}}
           />
           <Stack.Screen
             name="Results"
             component={ResultsScreen}
-            options={{title: 'Diagnosis'}}
+            options={{title: 'DIAGNOSIS'}}
           />
         </Stack.Navigator>
       </NavigationContainer>

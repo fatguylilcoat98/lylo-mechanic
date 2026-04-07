@@ -10,31 +10,19 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Share, Clipboard,
 } from 'react-native';
+import {C} from '../constants/colors';
 
-const C = {
-  bg: '#0a0c0f',
-  panel: '#0f1318',
-  border: '#1e2a38',
-  text: '#c8d6e2',
-  textDim: '#4e6070',
-  textBright: '#e8f4ff',
-  accent: '#1a8fff',
-  success: '#00c87a',
-  warning: '#f0b429',
-  danger: '#e03c3c',
-  gold: '#c8a84b',
-};
 
 const URGENCY_STYLES = {
-  green:  {bg: C.success + '18', border: C.success + '44', text: C.success},
-  orange: {bg: C.warning + '18', border: C.warning + '44', text: C.warning},
-  red:    {bg: C.danger + '18', border: C.danger + '44', text: C.danger},
+  green:  {bg: C.green + '18', border: C.green + '44', text: C.green},
+  orange: {bg: C.amber + '18', border: C.amber + '44', text: C.amber},
+  red:    {bg: C.red + '18', border: C.red + '44', text: C.red},
 };
 
 const DIFFICULTY_COLORS = {
-  Easy: C.success,
-  Medium: C.warning,
-  Hard: C.danger,
+  Easy: C.green,
+  Medium: C.amber,
+  Hard: C.red,
 };
 
 function Card({title, icon, children}) {
@@ -109,7 +97,7 @@ function ResultPanel({result, onCopyScript}) {
         {c.dealer ? (
           <View style={s.costDealerRow}>
             <Text style={s.costLabel}>DEALER</Text>
-            <Text style={[s.costValue, {color: C.warning}]}>{c.dealer}</Text>
+            <Text style={[s.costValue, {color: C.amber}]}>{c.dealer}</Text>
           </View>
         ) : null}
         {c.note ? <Text style={s.costNote}>{c.note}</Text> : null}
@@ -162,7 +150,7 @@ export default function ResultsScreen({route, navigation}) {
   if (!data || !data.results || data.results.length === 0) {
     return (
       <View style={[s.container, {justifyContent: 'center', alignItems: 'center'}]}>
-        <Text style={{color: C.danger, fontSize: 16}}>No diagnosis result available.</Text>
+        <Text style={{color: C.red, fontSize: 16}}>No diagnosis result available.</Text>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Text style={s.backBtnText}>Go Back</Text>
         </TouchableOpacity>
@@ -295,7 +283,7 @@ const s = StyleSheet.create({
   // Tabs
   tabs: {flexDirection: 'row', gap: 8, marginBottom: 16, justifyContent: 'center'},
   tab: {
-    backgroundColor: C.panel, borderRadius: 8, paddingVertical: 8,
+    backgroundColor: C.card, borderRadius: 8, paddingVertical: 8,
     paddingHorizontal: 16, borderWidth: 1, borderColor: C.border,
   },
   tabActive: {backgroundColor: C.accent, borderColor: C.accent},
@@ -304,7 +292,7 @@ const s = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: C.panel, borderRadius: 12, padding: 16,
+    backgroundColor: C.card, borderRadius: 12, padding: 16,
     marginBottom: 12, borderWidth: 1, borderColor: C.border,
   },
   cardHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: 12},
@@ -343,7 +331,7 @@ const s = StyleSheet.create({
     fontSize: 12, color: C.textDim, fontWeight: '700',
     textTransform: 'uppercase', letterSpacing: 0.5,
   },
-  costValue: {fontSize: 18, fontWeight: '700', color: C.success, marginTop: 4},
+  costValue: {fontSize: 18, fontWeight: '700', color: C.green, marginTop: 4},
   costDealerRow: {
     backgroundColor: C.bg, borderRadius: 8, padding: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -373,24 +361,24 @@ const s = StyleSheet.create({
 
   // Red flags
   redFlagItem: {
-    backgroundColor: C.danger + '10', borderLeftWidth: 3,
-    borderLeftColor: C.danger, borderRadius: 8, padding: 12,
+    backgroundColor: C.red + '10', borderLeftWidth: 3,
+    borderLeftColor: C.red, borderRadius: 8, padding: 12,
     marginBottom: 8,
   },
   redFlagText: {color: C.text, fontSize: 14, lineHeight: 21},
 
   // Copied toast
   copiedToast: {
-    backgroundColor: C.success + '22', borderRadius: 8, padding: 10,
+    backgroundColor: C.green + '22', borderRadius: 8, padding: 10,
     alignItems: 'center', marginBottom: 12,
-    borderWidth: 1, borderColor: C.success + '44',
+    borderWidth: 1, borderColor: C.green + '44',
   },
-  copiedText: {color: C.success, fontSize: 13, fontWeight: '600'},
+  copiedText: {color: C.green, fontSize: 13, fontWeight: '600'},
 
   // Actions
   actionRow: {marginTop: 8, marginBottom: 12},
   shareBtn: {
-    backgroundColor: C.panel, borderRadius: 12, padding: 14,
+    backgroundColor: C.card, borderRadius: 12, padding: 14,
     alignItems: 'center', borderWidth: 1, borderColor: C.border,
   },
   shareBtnText: {color: C.textBright, fontSize: 15, fontWeight: '600'},

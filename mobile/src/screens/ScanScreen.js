@@ -12,20 +12,8 @@ import {
 } from 'react-native';
 import OBDService from '../services/OBDService';
 import ApiClient from '../services/ApiClient';
+import {C} from '../constants/colors';
 
-const C = {
-  bg: '#0a0c0f',
-  panel: '#0f1318',
-  border: '#1e2a38',
-  text: '#c8d6e2',
-  textDim: '#4e6070',
-  textBright: '#e8f4ff',
-  accent: '#1a8fff',
-  success: '#00c87a',
-  warning: '#f0b429',
-  danger: '#e03c3c',
-  gold: '#c8a84b',
-};
 
 // Embedded demo result — works offline with zero Bluetooth and zero API
 const DEMO_RESULT = {
@@ -212,7 +200,7 @@ export default function ScanScreen({route, navigation}) {
                 <Text style={[
                   s.stageLabel,
                   i <= stageIdx && {color: C.textBright},
-                  i < stageIdx && {color: C.success},
+                  i < stageIdx && {color: C.green},
                 ]}>
                   {stage.label}
                 </Text>
@@ -248,9 +236,9 @@ export default function ScanScreen({route, navigation}) {
               key={i}
               style={[
                 s.logLine,
-                entry.type === 'error' && {color: C.danger},
-                entry.type === 'warn' && {color: C.warning},
-                entry.type === 'success' && {color: C.success},
+                entry.type === 'error' && {color: C.red},
+                entry.type === 'warn' && {color: C.amber},
+                entry.type === 'success' && {color: C.green},
               ]}>
               [{entry.ts}] {entry.msg}
             </Text>
@@ -271,7 +259,7 @@ const s = StyleSheet.create({
 
   // Vehicle
   vehicleCard: {
-    backgroundColor: C.panel, borderRadius: 12, padding: 20,
+    backgroundColor: C.card, borderRadius: 12, padding: 20,
     marginBottom: 16, borderWidth: 1, borderColor: C.border,
   },
   vehicleText: {color: C.textBright, fontSize: 20, fontWeight: '700'},
@@ -284,14 +272,14 @@ const s = StyleSheet.create({
   },
   scanBtnText: {color: '#fff', fontSize: 16, fontWeight: '700'},
   errorBox: {
-    backgroundColor: C.danger + '18', borderRadius: 8, padding: 10,
-    marginTop: 12, borderWidth: 1, borderColor: C.danger + '44',
+    backgroundColor: C.red + '18', borderRadius: 8, padding: 10,
+    marginTop: 12, borderWidth: 1, borderColor: C.red + '44',
   },
-  errorText: {color: C.danger, fontSize: 13},
+  errorText: {color: C.red, fontSize: 13},
 
   // Progress
   progressCard: {
-    backgroundColor: C.panel, borderRadius: 12, padding: 24,
+    backgroundColor: C.card, borderRadius: 12, padding: 24,
     marginBottom: 16, alignItems: 'center',
     borderWidth: 1, borderColor: C.border,
   },
@@ -306,7 +294,7 @@ const s = StyleSheet.create({
     padding: 8, borderRadius: 8,
   },
   stageActive: {backgroundColor: C.accent + '12'},
-  stageDone: {backgroundColor: C.success + '10'},
+  stageDone: {backgroundColor: C.green + '10'},
   stageIcon: {fontSize: 16, marginRight: 10, width: 24, textAlign: 'center'},
   stageLabel: {color: C.textDim, fontSize: 14},
 
