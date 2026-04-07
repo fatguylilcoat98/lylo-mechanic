@@ -43,4 +43,6 @@ def health():
     return {"status": "ok", "system": "LYLO Mechanic", "version": "1.0.0"}
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5050)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
