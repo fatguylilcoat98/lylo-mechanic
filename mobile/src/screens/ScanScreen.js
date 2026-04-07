@@ -40,8 +40,13 @@ const DEMO_RESULT = {
 };
 
 const DEMO_VEHICLE = {
-  year: 2017, make: 'Honda', model: 'Civic',
-  engine: '1.5L Turbo', odometer: 87000,
+  year: '2017', make: 'Honda', model: 'Civic',
+  engine: '1.5L Turbo', odometer: '87000',
+};
+
+const EMPTY_VEHICLE = {
+  year: '', make: '', model: '',
+  engine: '', odometer: '',
 };
 
 const STAGES = [
@@ -59,9 +64,57 @@ export default function ScanScreen({route, navigation}) {
   const [stageIdx, setStageIdx] = useState(0);
   const [log, setLog] = useState([]);
   const [scanData, setScanData] = useState(null);
-  const [vehicle, setVehicle] = useState(DEMO_VEHICLE);
+  const [vehicle, setVehicle] = useState(isDemo ? DEMO_VEHICLE : EMPTY_VEHICLE);
+  const [vinStatus, setVinStatus] = useState(isDemo ? 'demo' : 'pending'); // pending | reading | done | failed | demo
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
+
+  // Auto-read VIN when connected to real OBD adapter
+  useEffect(() => {
+    if (isDemo) return;
+    let cancelled = false;
+
+    (async () => {
+      setVinStatus('reading');
+      try {
+        const vin = await OBDService.readVIN();
+        if (cancelled) return;
+
+        if (vin) {
+          addLog(`VIN: ${vin}`, 'success');
+          const decoded = await OBDService.decodeVIN(vin);
+          if (cancelled) return;
+
+          if (decoded) {
+            setVehicle({
+              year: decoded.year,
+              make: decoded.make,
+              model: decoded.model,
+              engine: decoded.engine,
+              odometer: '',
+              vin: decoded.vin,
+            });
+            setVinStatus('done');
+            addLog(`Vehicle: ${decoded.year} ${decoded.make} ${decoded.model} ${decoded.engine}`, 'success');
+          } else {
+            setVehicle(prev => ({...prev, vin}));
+            setVinStatus('done');
+            addLog('VIN read but decode failed — enter vehicle info manually', 'warn');
+          }
+        } else {
+          setVinStatus('failed');
+          addLog('VIN not available — enter vehicle info manually', 'warn');
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setVinStatus('failed');
+          addLog(`VIN read error: ${e.message}`, 'warn');
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isDemo]);
 
   const addLog = (msg, type = 'info') => {
     const ts = new Date().toLocaleTimeString('en-US', {
@@ -156,13 +209,35 @@ export default function ScanScreen({route, navigation}) {
       {/* Vehicle info */}
       {phase === 'vehicle' && (
         <View style={s.vehicleCard}>
-          <Text style={s.cardLabel}>VEHICLE</Text>
-          <Text style={s.vehicleText}>
-            {vehicle.year} {vehicle.make} {vehicle.model}
+          <Text style={s.cardLabel}>
+            {vinStatus === 'reading' ? 'READING VIN...' : 'VEHICLE'}
           </Text>
-          <Text style={s.vehicleDetail}>
-            {vehicle.engine} · {vehicle.odometer.toLocaleString()} mi
-          </Text>
+
+          {vinStatus === 'reading' && (
+            <View style={s.vinReadingRow}>
+              <ActivityIndicator size="small" color={C.accent} />
+              <Text style={s.vinReadingText}>Reading VIN from vehicle...</Text>
+            </View>
+          )}
+
+          {(vinStatus === 'done' || vinStatus === 'demo') && vehicle.make ? (
+            <View>
+              <Text style={s.vehicleText}>
+                {vehicle.year} {vehicle.make} {vehicle.model}
+              </Text>
+              <Text style={s.vehicleDetail}>
+                {[vehicle.engine, vehicle.vin].filter(Boolean).join(' \u00B7 ')}
+              </Text>
+            </View>
+          ) : vinStatus === 'failed' ? (
+            <Text style={s.vehicleDetail}>
+              Could not read VIN — vehicle info will be sent without it
+            </Text>
+          ) : vinStatus !== 'reading' ? (
+            <Text style={s.vehicleDetail}>
+              Connect to OBDLink to auto-detect vehicle
+            </Text>
+          ) : null}
 
           {error && (
             <View style={s.errorBox}>
@@ -170,7 +245,11 @@ export default function ScanScreen({route, navigation}) {
             </View>
           )}
 
-          <TouchableOpacity style={s.scanBtn} onPress={startScan} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[s.scanBtn, vinStatus === 'reading' && {opacity: 0.5}]}
+            onPress={startScan}
+            activeOpacity={0.85}
+            disabled={vinStatus === 'reading'}>
             <Text style={s.scanBtnText}>
               {isDemo ? 'Run Demo Scan' : 'Scan Vehicle'}
             </Text>
@@ -263,7 +342,11 @@ const s = StyleSheet.create({
     marginBottom: 16, borderWidth: 1, borderColor: C.border,
   },
   vehicleText: {color: C.textBright, fontSize: 20, fontWeight: '700'},
-  vehicleDetail: {color: C.textDim, fontSize: 14, marginTop: 4},
+  vehicleDetail: {color: C.textDim, fontSize: 14, marginTop: 4, lineHeight: 20},
+  vinReadingRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8,
+  },
+  vinReadingText: {color: C.accent, fontSize: 14, fontWeight: '600'},
   scanBtn: {
     backgroundColor: C.accent, borderRadius: 12,
     padding: 16, alignItems: 'center', marginTop: 20,

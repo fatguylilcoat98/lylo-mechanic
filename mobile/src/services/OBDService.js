@@ -95,6 +95,86 @@ class OBDService {
   }
 
   /**
+   * Read VIN from Mode 09 PID 02.
+   * Returns the 17-character VIN string, or null if not supported.
+   */
+  async readVIN() {
+    try {
+      const raw = await BluetoothService.sendCommand('0902');
+      // Response may come as multiple lines of hex
+      // Format: 49 02 01 XX XX XX ... (up to 5 frames)
+      const lines = raw.split('\n').map(l => l.replace(/\s/g, '').toUpperCase());
+      let hexChars = '';
+
+      for (const line of lines) {
+        if (line.startsWith('NODATA') || line.startsWith('ERROR') ||
+            line.startsWith('?') || line.length < 4) continue;
+
+        // Strip the mode/pid prefix bytes
+        let hex = line;
+        // Multi-frame: "490201..." "49020201..." etc
+        if (hex.startsWith('4902')) {
+          // Skip "4902" + 1 byte sequence number
+          hex = hex.slice(6);
+        }
+        hexChars += hex;
+      }
+
+      if (hexChars.length === 0) return null;
+
+      // Convert hex pairs to ASCII characters
+      let vin = '';
+      for (let i = 0; i < hexChars.length && vin.length < 17; i += 2) {
+        const code = parseInt(hexChars.substr(i, 2), 16);
+        // Valid VIN characters: 0-9, A-Z (no I, O, Q)
+        if (code >= 0x20 && code <= 0x7E) {
+          vin += String.fromCharCode(code);
+        }
+      }
+
+      // VIN must be exactly 17 chars
+      if (vin.length >= 17) {
+        return vin.substring(0, 17);
+      }
+      return vin.length > 0 ? vin : null;
+    } catch (e) {
+      console.warn('[OBD] VIN read failed:', e.message);
+      return null;
+    }
+  }
+
+  /**
+   * Decode a VIN into year, make, model, engine using NHTSA API.
+   * Returns {year, make, model, engine} or null.
+   */
+  async decodeVIN(vin) {
+    if (!vin || vin.length < 17) return null;
+    try {
+      const url = `https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+
+      if (!data.Results) return null;
+
+      const get = (varId) => {
+        const item = data.Results.find(r => r.VariableId === varId);
+        return item?.Value && item.Value.trim() !== '' ? item.Value.trim() : null;
+      };
+
+      return {
+        year: get(29) || '',      // Model Year
+        make: get(26) || '',      // Make
+        model: get(28) || '',     // Model
+        engine: [get(13), get(14)].filter(Boolean).join(' ') || '', // Displacement + Cylinders
+        vin: vin,
+      };
+    } catch (e) {
+      console.warn('[OBD] VIN decode failed:', e.message);
+      return null;
+    }
+  }
+
+  /**
    * Read MIL status and DTC count from Mode 01 PID 01.
    * Returns {milOn: bool, dtcCount: number, monitors: {name: 'complete'|'incomplete'}}
    */
