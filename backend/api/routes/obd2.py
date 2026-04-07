@@ -12,7 +12,7 @@ from models.schemas import OBDSessionInput
 obd2_bp = Blueprint("obd2", __name__)
 
 
-@obd2_bp.route("/obd2", methods=["POST"])
+@obd2_bp.route("/", methods=["POST"])
 def diagnose_obd2():
     """
     Main endpoint for LYLO Mechanic mobile app.
