@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LYLO Mechanic — Know Before You Go</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 640px;
+    padding: 0 16px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    padding: 40px 0 24px;
+  }
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  header h1 span { color: var(--accent); }
+  header p {
+    color: var(--text-muted);
+    font-size: 15px;
+    margin-top: 8px;
+  }
+  .tagline {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* ── INPUT SCREEN ── */
+  #input-screen {}
+
+  .input-box {
+    margin-top: 24px;
+  }
+  .input-box textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 16px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 17px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-box textarea:focus {
+    border-color: var(--accent);
+  }
+  .input-box textarea::placeholder {
+    color: var(--text-muted);
+  }
+
+  .input-hint {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-primary:hover { background: #79c0ff; }
+  .btn-primary:disabled {
+    background: var(--border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  /* ── DEMO SECTION ── */
+  .demo-section {
+    margin-top: 32px;
+  }
+  .demo-section h3 {
+    font-size: 14px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .demo-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .demo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .demo-card:hover {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+  .demo-card .demo-label {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .demo-card .demo-desc {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .demo-card .demo-arrow {
+    color: var(--accent);
+    font-size: 18px;
+  }
+
+  /* ── LOADING ── */
+  #loading-screen {
+    display: none;
+    text-align: center;
+    padding: 80px 0;
+  }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-screen p {
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+
+  /* ── RESULT SCREEN ── */
+  #result-screen {
+    display: none;
+    padding-bottom: 40px;
+  }
+
+  .result-header {
+    text-align: center;
+    padding: 24px 0 16px;
+  }
+  .result-code {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: var(--accent);
+  }
+  .result-input-echo {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon { font-size: 18px; }
+
+  /* Urgency badge */
+  .urgency-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .urgency-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid var(--green); }
+  .urgency-orange { background: rgba(210,153,34,0.15); color: var(--orange); border: 1px solid var(--orange); }
+  .urgency-red { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid var(--red); }
+
+  .urgency-msg {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 8px;
+  }
+
+  /* Lists */
+  .result-list {
+    list-style: none;
+    padding: 0;
+  }
+  .result-list li {
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+  }
+  .result-list li:last-child { border-bottom: none; }
+  .result-list li::before {
+    content: ">";
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+
+  /* Cost grid */
+  .cost-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .cost-item {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .cost-item.full-width {
+    grid-column: 1 / -1;
+  }
+  .cost-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .cost-value {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 4px;
+    color: var(--green);
+  }
+  .cost-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+
+  /* Difficulty */
+  .difficulty-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .difficulty-level {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .difficulty-easy { color: var(--green); }
+  .difficulty-medium { color: var(--orange); }
+  .difficulty-hard { color: var(--red); }
+
+  /* ShopScript */
+  .shop-script {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    padding: 16px;
+    border-radius: 0 8px 8px 0;
+    font-size: 15px;
+    line-height: 1.6;
+    font-style: italic;
+    position: relative;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .copy-btn:hover { background: var(--accent); color: #000; }
+
+  /* Red flags */
+  .red-flag {
+    background: rgba(248,81,73,0.08);
+    border-left: 3px solid var(--red);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Back button */
+  .back-row {
+    margin-top: 16px;
+    text-align: center;
+  }
+  .btn-back {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 12px 32px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-back:hover { background: rgba(88,166,255,0.1); }
+
+  /* Multi-result tabs */
+  .result-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    justify-content: center;
+  }
+  .result-tab {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .result-tab.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* Note banner */
+  .note-banner {
+    background: rgba(88,166,255,0.1);
+    border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>LYLO <span>Mechanic</span></h1>
+    <p>Know what's wrong before you walk into a shop.</p>
+    <div class="tagline">We got your back</div>
+  </header>
+
+  <!-- ════════ INPUT SCREEN ════════ -->
+  <div id="input-screen">
+    <div class="input-box">
+      <textarea id="user-input" placeholder="Type a code like P0420&#10;or describe what's going on...&#10;&#10;&quot;Check engine light, rough idle, smells weird&quot;"></textarea>
+      <div class="input-hint">Enter a diagnostic code or describe your car's symptoms</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="analyze-btn" onclick="analyze()">Analyze</button>
+    </div>
+
+    <div class="demo-section">
+      <h3>Try a demo</h3>
+      <div class="demo-cards">
+        <div class="demo-card" onclick="runDemo('p0420')">
+          <div>
+            <div class="demo-label">P0420 — Check Engine Light</div>
+            <div class="demo-desc">The most misdiagnosed code. See why shops get it wrong.</div>
+          </div>
+          <div class="demo-arrow">&rarr;</div>
+        </div>
+        <div class="demo-card" onclick="runDemo('misfire')">
+          <div>
+            <div class="demo-label">Engine Misfire</div>
+            <div class="demo-desc">Rough idle, shaking, loss of power.</div>
+          </div>
+          <div class="demo-arrow">&rarr;</div>
+        </div>
+        <div class="demo-card" onclick="runDemo('battery')">
+          <div>
+            <div class="demo-label">Battery / Electrical</div>
+            <div class="demo-desc">Dim lights, slow crank, electrical problems.</div>
+          </div>
+          <div class="demo-arrow">&rarr;</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Built by <a href="#">The Good Neighbor Guard</a></p>
+      <p style="margin-top: 4px;">Not a substitute for professional diagnosis. Always verify with a qualified mechanic.</p>
+    </footer>
+  </div>
+
+  <!-- ════════ LOADING SCREEN ════════ -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <p>Analyzing your vehicle...</p>
+  </div>
+
+  <!-- ════════ RESULT SCREEN ════════ -->
+  <div id="result-screen">
+    <div class="result-header">
+      <div class="result-code" id="r-code"></div>
+      <div class="result-input-echo" id="r-input-echo"></div>
+    </div>
+
+    <div id="r-note-banner"></div>
+    <div id="r-tabs" class="result-tabs"></div>
+    <div id="r-body"></div>
+
+    <div class="back-row">
+      <button class="btn-back" onclick="goBack()">Check another issue</button>
+    </div>
+
+    <footer>
+      <p>Built by <a href="#">The Good Neighbor Guard</a></p>
+      <p style="margin-top: 4px;">Not a substitute for professional diagnosis.</p>
+    </footer>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.origin + '/api/v1/quick';
+
+function showScreen(name) {
+  document.getElementById('input-screen').style.display = name === 'input' ? 'block' : 'none';
+  document.getElementById('loading-screen').style.display = name === 'loading' ? 'block' : 'none';
+  document.getElementById('result-screen').style.display = name === 'result' ? 'block' : 'none';
+}
+
+// Allow Enter to submit (Shift+Enter for newline)
+document.getElementById('user-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    analyze();
+  }
+});
+
+async function analyze() {
+  const input = document.getElementById('user-input').value.trim();
+  if (!input) return;
+
+  showScreen('loading');
+
+  try {
+    const res = await fetch(API_BASE + '/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input })
+    });
+    const data = await res.json();
+    if (data.error) {
+      alert(data.error);
+      showScreen('input');
+      return;
+    }
+    renderResults(data);
+  } catch (err) {
+    alert('Connection error. Please try again.');
+    showScreen('input');
+  }
+}
+
+async function runDemo(id) {
+  showScreen('loading');
+  try {
+    const res = await fetch(API_BASE + '/demo/' + id);
+    const data = await res.json();
+    renderResults(data);
+  } catch (err) {
+    alert('Connection error. Please try again.');
+    showScreen('input');
+  }
+}
+
+let currentResults = [];
+let currentIndex = 0;
+
+function renderResults(data) {
+  currentResults = data.results || [];
+  currentIndex = 0;
+
+  document.getElementById('r-input-echo').textContent = 'You asked: "' + data.input + '"';
+
+  // Note banner
+  const noteBanner = document.getElementById('r-note-banner');
+  if (data.note) {
+    noteBanner.innerHTML = '<div class="note-banner">' + data.note + '</div>';
+  } else {
+    noteBanner.innerHTML = '';
+  }
+
+  // Tabs for multiple results
+  const tabsEl = document.getElementById('r-tabs');
+  if (currentResults.length > 1) {
+    tabsEl.innerHTML = currentResults.map((r, i) =>
+      '<div class="result-tab' + (i === 0 ? ' active' : '') + '" onclick="switchTab(' + i + ')">' +
+      (r.code || 'Result ' + (i+1)) + '</div>'
+    ).join('');
+  } else {
+    tabsEl.innerHTML = '';
+  }
+
+  renderSingleResult(0);
+  showScreen('result');
+  window.scrollTo(0, 0);
+}
+
+function switchTab(idx) {
+  currentIndex = idx;
+  document.querySelectorAll('.result-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+  });
+  renderSingleResult(idx);
+}
+
+function renderSingleResult(idx) {
+  const r = currentResults[idx];
+  if (!r) return;
+
+  document.getElementById('r-code').textContent = r.code || '';
+
+  const w = r.whats_wrong || {};
+  const u = r.urgency || {};
+  const c = r.cost || {};
+  const d = r.difficulty || {};
+
+  let html = '';
+
+  // 1. What's Likely Wrong
+  html += '<div class="card">';
+  html += '<div class="card-title"><span class="icon">&#128295;</span> What\'s Likely Wrong</div>';
+  html += '<p style="font-size:15px;font-weight:600;margin-bottom:8px;">' + esc(w.summary || '') + '</p>';
+  if (w.likely_cause) {
+    html += '<p style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">Most likely: <strong style="color:var(--text)">' + esc(w.likely_cause) + '</strong></p>';
+  }
+  if (w.explanation) {
+    html += '<p style="font-size:14px;color:var(--text-muted);line-height:1.5;">' + esc(w.explanation) + '</p>';
+  }
+  if (w.other_possibilities && w.other_possibilities.length) {
+    html += '<p style="font-size:13px;color:var(--text-muted);margin-top:8px;">Also possible: ' + w.other_possibilities.map(esc).join(', ') + '</p>';
+  }
+  if (w.check_first && w.check_first.length) {
+    html += '<ul class="result-list" style="margin-top:12px;">';
+    w.check_first.forEach(item => { html += '<li>' + esc(item) + '</li>'; });
+    html += '</ul>';
+  }
+  html += '</div>';
+
+  // 2. Urgency
+  html += '<div class="card">';
+  html += '<div class="card-title"><span class="icon">&#9888;&#65039;</span> Urgency</div>';
+  const uClass = u.color === 'red' ? 'urgency-red' : u.color === 'orange' ? 'urgency-orange' : 'urgency-green';
+  html += '<div class="urgency-badge ' + uClass + '">' + esc(u.level || '') + '</div>';
+  html += '<div class="urgency-msg">' + esc(u.message || '') + '</div>';
+  html += '</div>';
+
+  // 3. Cost
+  html += '<div class="card">';
+  html += '<div class="card-title"><span class="icon">&#128176;</span> Estimated Cost</div>';
+  html += '<div class="cost-grid">';
+  html += '<div class="cost-item"><div class="cost-label">DIY</div><div class="cost-value">' + esc(c.diy || 'N/A') + '</div></div>';
+  html += '<div class="cost-item"><div class="cost-label">Shop</div><div class="cost-value">' + esc(c.shop || 'N/A') + '</div></div>';
+  if (c.dealer) {
+    html += '<div class="cost-item full-width"><div class="cost-label">Dealer</div><div class="cost-value" style="color:var(--orange)">' + esc(c.dealer) + '</div></div>';
+  }
+  html += '</div>';
+  if (c.note) {
+    html += '<div class="cost-note">' + esc(c.note) + '</div>';
+  }
+  html += '</div>';
+
+  // 4. Difficulty
+  html += '<div class="card">';
+  html += '<div class="card-title"><span class="icon">&#128736;</span> Fix Difficulty</div>';
+  const dClass = d.level === 'Easy' ? 'difficulty-easy' : d.level === 'Hard' ? 'difficulty-hard' : 'difficulty-medium';
+  html += '<div class="difficulty-display">';
+  html += '<span class="difficulty-level ' + dClass + '">' + esc(d.level || 'Unknown') + '</span>';
+  html += '<span style="color:var(--text-muted);font-size:14px;">' + esc(d.label || '') + '</span>';
+  html += '</div>';
+  html += '</div>';
+
+  // 5. ShopScript
+  html += '<div class="card">';
+  html += '<div class="card-title"><span class="icon">&#128483;</span> What To Say At The Shop</div>';
+  html += '<div class="shop-script">';
+  html += '<button class="copy-btn" onclick="copyScript(this)">Copy</button>';
+  html += esc(r.shop_script || '');
+  html += '</div>';
+  html += '</div>';
+
+  // 6. Red Flags
+  if (r.red_flags && r.red_flags.length) {
+    html += '<div class="card">';
+    html += '<div class="card-title"><span class="icon">&#128681;</span> Red Flags</div>';
+    r.red_flags.forEach(flag => {
+      html += '<div class="red-flag">' + esc(flag) + '</div>';
+    });
+    html += '</div>';
+  }
+
+  document.getElementById('r-body').innerHTML = html;
+}
+
+function copyScript(btn) {
+  const text = btn.parentElement.textContent.replace('Copy', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  });
+}
+
+function goBack() {
+  showScreen('input');
+  window.scrollTo(0, 0);
+}
+
+function esc(s) {
+  const el = document.createElement('span');
+  el.textContent = s;
+  return el.innerHTML;
+}
+</script>
+
+</body>
+</html>
