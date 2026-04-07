@@ -10,13 +10,20 @@
 // Production backend on Render
 const DEFAULT_BASE_URL = 'https://lylo-mechanic.onrender.com';
 
+let apiCallCounter = 0;
+
 class ApiClient {
   constructor(baseUrl = DEFAULT_BASE_URL) {
     this._baseUrl = baseUrl;
+    this._instanceId = Date.now();
   }
 
   set baseUrl(url) {
     this._baseUrl = url;
+  }
+
+  _logState(label) {
+    console.log(`[API ${label}] instanceId=${this._instanceId} baseUrl=${this._baseUrl}`);
   }
 
   /**
@@ -91,18 +98,141 @@ class ApiClient {
    * @returns {object} {input, input_type, results: [{code, whats_wrong, urgency, cost, difficulty, shop_script, red_flags}]}
    */
   async quickCheck(input) {
-    const resp = await fetch(`${this._baseUrl}/api/v1/quick/check`, {
+    apiCallCounter++;
+    const callId = apiCallCounter;
+    const tag = `[API #${callId}]`;
+
+    this._logState(tag);
+
+    const url = `${this._baseUrl}/api/v1/quick/check`;
+    const requestBody = JSON.stringify({input});
+
+    console.log(tag, '===== REQUEST =====');
+    console.log(tag, 'URL:', url);
+    console.log(tag, 'Method: POST');
+    console.log(tag, 'Body:', requestBody);
+    console.log(tag, 'Body length:', requestBody.length);
+    console.log(tag, 'Input type:', typeof input);
+    console.log(tag, 'Input value:', JSON.stringify(input));
+
+    let resp;
+    const fetchOpts = {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({input}),
-    });
+      body: requestBody,
+      signal: AbortSignal.timeout(30000), // 30s timeout — prevents hanging on stale connections
+    };
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`Quick check failed (${resp.status}): ${text}`);
+    try {
+      const fetchStart = Date.now();
+      resp = await fetch(url, fetchOpts);
+      const fetchDuration = Date.now() - fetchStart;
+
+      console.log(tag, '===== RESPONSE =====');
+      console.log(tag, 'Status:', resp.status, resp.statusText);
+      console.log(tag, 'OK:', resp.ok);
+      console.log(tag, 'Duration:', fetchDuration, 'ms');
+      console.log(tag, 'Response type:', resp.type);
+      console.log(tag, 'Response URL:', resp.url);
+      console.log(tag, 'Headers:', JSON.stringify(Object.fromEntries(resp.headers?.entries?.() || [])));
+    } catch (networkErr) {
+      // Stale keep-alive connection — retry once with a fresh socket
+      const isNetworkFail = networkErr.message?.includes('Network request failed')
+        || networkErr.name === 'TimeoutError'
+        || networkErr.name === 'AbortError';
+      if (isNetworkFail) {
+        console.warn(tag, `First attempt failed (${networkErr.message}), retrying once...`);
+        try {
+          const retryStart = Date.now();
+          resp = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: requestBody,
+            signal: AbortSignal.timeout(30000),
+          });
+          const retryDuration = Date.now() - retryStart;
+          console.log(tag, `Retry succeeded in ${retryDuration}ms`);
+        } catch (retryErr) {
+          console.error(tag, '===== RETRY ALSO FAILED =====');
+          console.error(tag, 'error.name:', retryErr.name);
+          console.error(tag, 'error.message:', retryErr.message);
+          console.error(tag, 'error.stack:', retryErr.stack);
+          console.error(tag, 'Full error:', JSON.stringify(retryErr, Object.getOwnPropertyNames(retryErr)));
+          console.error(tag, 'Request was:', requestBody);
+
+          retryErr._lyloDebug = {
+            callId,
+            url,
+            requestBody,
+            phase: 'fetch_retry_threw',
+            instanceId: this._instanceId,
+          };
+          throw retryErr;
+        }
+      } else {
+        // Non-network error — don't retry
+        console.error(tag, '===== FETCH THREW (no HTTP response) =====');
+        console.error(tag, 'error.name:', networkErr.name);
+        console.error(tag, 'error.message:', networkErr.message);
+        console.error(tag, 'error.code:', networkErr.code);
+        console.error(tag, 'error.type:', networkErr.type);
+        console.error(tag, 'error.cause:', networkErr.cause);
+        console.error(tag, 'error.stack:', networkErr.stack);
+        console.error(tag, 'Full error:', JSON.stringify(networkErr, Object.getOwnPropertyNames(networkErr)));
+        console.error(tag, 'Request was:', requestBody);
+
+        networkErr._lyloDebug = {
+          callId,
+          url,
+          requestBody,
+          phase: 'fetch_threw',
+          instanceId: this._instanceId,
+        };
+        throw networkErr;
+      }
     }
 
-    return resp.json();
+    // We got an HTTP response — read the body
+    let responseText;
+    try {
+      responseText = await resp.text();
+      console.log(tag, 'Response body:', responseText.slice(0, 1000));
+    } catch (bodyErr) {
+      console.error(tag, 'Failed to read response body:', bodyErr.message);
+      responseText = `(body unreadable: ${bodyErr.message})`;
+    }
+
+    if (!resp.ok) {
+      console.error(tag, '===== HTTP ERROR =====');
+      console.error(tag, 'Status:', resp.status, resp.statusText);
+      console.error(tag, 'Body:', responseText.slice(0, 500));
+      console.error(tag, 'Request was:', requestBody);
+
+      const err = new Error(`Quick check failed (${resp.status}): ${responseText}`);
+      err._lyloDebug = {
+        callId,
+        url,
+        requestBody,
+        status: resp.status,
+        statusText: resp.statusText,
+        responseBody: responseText,
+        phase: 'http_error',
+        instanceId: this._instanceId,
+      };
+      throw err;
+    }
+
+    // Parse JSON from the already-read text
+    try {
+      const parsed = JSON.parse(responseText);
+      console.log(tag, 'Parsed OK — keys:', Object.keys(parsed));
+      return parsed;
+    } catch (jsonErr) {
+      console.error(tag, '===== JSON PARSE FAILED =====');
+      console.error(tag, 'Raw text:', responseText.slice(0, 500));
+      jsonErr._lyloDebug = {callId, url, requestBody, responseBody: responseText, phase: 'json_parse'};
+      throw jsonErr;
+    }
   }
 
   /**
@@ -113,7 +243,14 @@ class ApiClient {
    * @returns {object} Quick check results with ShopScript
    */
   async quickCheckFromScan(scanData) {
-    const dtcCodes = (scanData.raw_dtcs || []).map(d => d.code).filter(Boolean);
+    const tag = `[API quickCheckFromScan]`;
+    console.log(tag, 'Called with scanData type:', typeof scanData);
+    console.log(tag, 'scanData is null:', scanData === null);
+    console.log(tag, 'scanData is undefined:', scanData === undefined);
+    console.log(tag, 'raw_dtcs:', JSON.stringify(scanData?.raw_dtcs));
+
+    const dtcCodes = (scanData?.raw_dtcs || []).map(d => d?.code).filter(Boolean);
+    console.log(tag, 'Extracted DTC codes:', JSON.stringify(dtcCodes));
 
     if (dtcCodes.length === 0) {
       // No codes found — return a helpful "clean" result

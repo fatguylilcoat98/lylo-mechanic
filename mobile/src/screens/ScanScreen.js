@@ -57,6 +57,8 @@ const STAGES = [
   {key: 'script', label: 'Generating ShopScript...', icon: '\u{1F5E3}'},
 ];
 
+let scanCounter = 0; // Module-level counter survives re-renders
+
 export default function ScanScreen({route, navigation}) {
   const isDemo = route.params?.demo ?? false;
   const [phase, setPhase] = useState('vehicle'); // vehicle | scanning | sending | done
@@ -68,6 +70,7 @@ export default function ScanScreen({route, navigation}) {
   const [vinStatus, setVinStatus] = useState(isDemo ? 'demo' : 'pending'); // pending | reading | done | failed | demo
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
+  const scanInProgress = useRef(false);
 
   // Auto-read VIN when connected to real OBD adapter
   useEffect(() => {
@@ -124,9 +127,41 @@ export default function ScanScreen({route, navigation}) {
   };
 
   const startScan = async () => {
+    scanCounter++;
+    const thisScan = scanCounter;
+    const tag = `[SCAN #${thisScan}]`;
+
+    // ── Race condition guard ──
+    if (scanInProgress.current) {
+      console.warn(tag, 'BLOCKED — scan already in progress!');
+      addLog(`${tag} BLOCKED — previous scan still running!`, 'error');
+      return;
+    }
+    scanInProgress.current = true;
+
+    // ── Log state BEFORE reset ──
+    console.log(tag, '===== SCAN START =====');
+    console.log(tag, 'State BEFORE reset:', {
+      phase,
+      stageIdx,
+      progress,
+      scanData: scanData ? `object with keys: ${Object.keys(scanData).join(',')}` : null,
+      scanData_raw_dtcs: scanData?.raw_dtcs ? JSON.stringify(scanData.raw_dtcs) : null,
+      error,
+      logLength: log.length,
+      'OBDService._initialized': OBDService.initialized,
+      'OBDService._protocol': OBDService.protocol,
+    });
+    addLog(`${tag} Starting — previous scanData: ${scanData ? 'EXISTS' : 'null'}`, 'info');
+
+    // ── Reset ALL state ──
     setPhase('scanning');
     setError(null);
     setStageIdx(0);
+    setScanData(null);
+    setProgress({step: 0, total: 0, msg: ''});
+
+    console.log(tag, 'State reset complete (scanData cleared, progress zeroed)');
 
     if (isDemo) {
       addLog('Demo mode — P0420 catalytic converter scenario', 'info');
@@ -153,23 +188,41 @@ export default function ScanScreen({route, navigation}) {
       setStageIdx(4);
       addLog('Diagnosis complete.', 'success');
       await new Promise(r => setTimeout(r, 400));
+      scanInProgress.current = false;
       navigation.replace('Results', {result});
       return;
     }
 
     // Live OBD scan
     try {
-      addLog('Starting OBD-II full vehicle scan...', 'info');
+      console.log(tag, 'OBDService state:', {
+        initialized: OBDService.initialized,
+        protocol: OBDService.protocol,
+      });
+      addLog(`${tag} OBD initialized=${OBDService.initialized} proto=${OBDService.protocol}`, 'info');
+      addLog(`${tag} Starting OBD-II full vehicle scan...`, 'info');
       setStageIdx(1);
 
+      const scanStartTime = Date.now();
       const data = await OBDService.fullScan((step, total, msg) => {
         setProgress({step, total, msg});
         addLog(msg, 'info');
-        // Update stage based on progress
         if (step <= 1) setStageIdx(0);
         else if (step <= 3) setStageIdx(1);
         else setStageIdx(2);
       });
+      const scanDuration = Date.now() - scanStartTime;
+
+      // ── Log DTC array immediately after scan ──
+      console.log(tag, `fullScan() completed in ${scanDuration}ms`);
+      console.log(tag, 'raw_dtcs from OBD:', JSON.stringify(data?.raw_dtcs));
+      console.log(tag, 'raw_pids keys:', Object.keys(data?.raw_pids || {}));
+      console.log(tag, 'pending_codes:', JSON.stringify(data?.pending_codes));
+      console.log(tag, 'mil_status:', data?.mil_status, 'dtc_count:', data?.dtc_count);
+      console.log(tag, 'FULL DATA:', JSON.stringify(data));
+
+      addLog(`${tag} Scan took ${scanDuration}ms`, 'info');
+      addLog(`${tag} DTCs from OBD: ${JSON.stringify(data?.raw_dtcs)}`, 'info');
 
       setScanData(data);
       addLog(`Scan complete: ${data.raw_dtcs.length} DTCs, ${Object.keys(data.raw_pids).length} PIDs`, 'success');
@@ -188,15 +241,74 @@ export default function ScanScreen({route, navigation}) {
       setStageIdx(3);
       addLog('Analyzing codes with LYLO...', 'info');
 
-      const result = await ApiClient.quickCheckFromScan(data);
+      // Pre-warm: wake Render if cold + refresh stale connection pool
+      const pingOk = await ApiClient.ping();
+      console.log(tag, 'Pre-warm ping:', pingOk ? 'OK' : 'FAILED');
+      addLog(`${tag} Backend ping: ${pingOk ? 'connected' : 'cold start, retrying...'}`, 'info');
+
+      // ── Pre-POST data validation ──
+      const dtcCodes = (data?.raw_dtcs || []).map(d => d?.code).filter(Boolean);
+      const inputStr = dtcCodes.join(' ');
+      console.log(tag, '===== PRE-POST CHECK =====');
+      console.log(tag, 'typeof data:', typeof data);
+      console.log(tag, 'data === null:', data === null);
+      console.log(tag, 'raw_dtcs is array:', Array.isArray(data?.raw_dtcs));
+      console.log(tag, 'raw_dtcs length:', data?.raw_dtcs?.length);
+      console.log(tag, 'Extracted DTC codes:', JSON.stringify(dtcCodes));
+      console.log(tag, 'POST input string:', JSON.stringify(inputStr));
+      console.log(tag, 'Will hit canned response:', dtcCodes.length === 0);
+
+      addLog(`${tag} POST input: "${inputStr}" (${dtcCodes.length} codes)`, 'info');
+
+      let result;
+      try {
+        const postStart = Date.now();
+        result = await ApiClient.quickCheckFromScan(data);
+        const postDuration = Date.now() - postStart;
+
+        console.log(tag, `quickCheckFromScan SUCCESS in ${postDuration}ms`);
+        console.log(tag, 'Response keys:', Object.keys(result || {}));
+        addLog(`${tag} API responded in ${postDuration}ms`, 'success');
+      } catch (fetchErr) {
+        const postDuration = Date.now() - scanStartTime;
+        console.error(tag, '===== QUICK CHECK FAILED =====');
+        console.error(tag, 'Failed after total', postDuration, 'ms');
+        console.error(tag, 'error.name:', fetchErr.name);
+        console.error(tag, 'error.message:', fetchErr.message);
+        console.error(tag, 'error.code:', fetchErr.code);
+        console.error(tag, 'error.type:', fetchErr.type);
+        console.error(tag, 'error.cause:', fetchErr.cause);
+        console.error(tag, 'error.stack:', fetchErr.stack);
+        console.error(tag, 'Full error:', JSON.stringify(fetchErr, Object.getOwnPropertyNames(fetchErr)));
+        console.error(tag, 'Data that was being sent:', JSON.stringify({input: inputStr}));
+        addLog(`${tag} FAIL: ${fetchErr.name}: ${fetchErr.message}`, 'error');
+        addLog(`${tag} code=${fetchErr.code} type=${fetchErr.type}`, 'error');
+        addLog(`${tag} Was sending: {"input":"${inputStr}"}`, 'error');
+        if (fetchErr._lyloDebug) {
+          const d = fetchErr._lyloDebug;
+          addLog(`${tag} Phase: ${d.phase}`, 'error');
+          addLog(`${tag} HTTP status: ${d.status || 'N/A (fetch threw before response)'}`, 'error');
+          addLog(`${tag} Response body: ${(d.responseBody || 'none').slice(0, 300)}`, 'error');
+          addLog(`${tag} Request body: ${d.requestBody}`, 'error');
+          addLog(`${tag} API instanceId: ${d.instanceId}`, 'error');
+        } else {
+          addLog(`${tag} No _lyloDebug — error thrown outside instrumented path`, 'error');
+        }
+        addLog(`${tag} Stack: ${(fetchErr.stack || '').slice(0, 300)}`, 'error');
+        throw fetchErr;
+      }
+
       setStageIdx(4);
       addLog('Diagnosis complete — ShopScript ready.', 'success');
 
+      scanInProgress.current = false;
       navigation.replace('Results', {result});
     } catch (err) {
+      console.error(tag, 'Outer catch:', err.message);
       setError(`Scan failed: ${err.message}`);
-      addLog(`Error: ${err.message}`, 'error');
+      addLog(`${tag} OUTER ERROR: ${err.message}`, 'error');
       setPhase('vehicle');
+      scanInProgress.current = false;
     }
   };
 
