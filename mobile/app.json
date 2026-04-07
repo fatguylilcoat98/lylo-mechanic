@@ -21,7 +21,8 @@
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
         "android.permission.BLUETOOTH_SCAN",
-        "android.permission.BLUETOOTH_CONNECT"
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "ios": {
@@ -52,7 +53,8 @@
           "bluetoothAlwaysPermission": "LYLO Mechanic needs Bluetooth to connect to your OBDLink adapter.",
           "neverForLocation": true
         }
-      ]
+      ],
+      "./plugins/withBluetoothClassic"
     ],
     "extra": {
       "eas": {

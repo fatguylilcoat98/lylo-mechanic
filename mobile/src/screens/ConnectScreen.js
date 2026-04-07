@@ -60,7 +60,7 @@ export default function ConnectScreen({navigation}) {
     setError(null);
 
     try {
-      const connInfo = await BluetoothService.connect(device.id);
+      const connInfo = await BluetoothService.connect(device.id, device.type);
       const info = await OBDService.initialize();
       setInitInfo({...info, profile: connInfo.profile});
       setPhase('ready');
@@ -88,6 +88,8 @@ export default function ConnectScreen({navigation}) {
         <Text style={s.deviceName}>{item.name}</Text>
         <Text style={s.deviceAddr}>
           {item.id?.substring(0, 17)}{item.rssi != null ? ` \u00B7 ${item.rssi} dBm` : ''}
+          {item.type ? ` \u00B7 ${item.type.toUpperCase()}` : ''}
+          {item.bonded ? ' \u00B7 Paired' : ''}
         </Text>
       </View>
       {item.isOBDLink && (
