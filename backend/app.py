@@ -26,7 +26,7 @@ app.register_blueprint(tutorial_bp, url_prefix="/api/v1/tutorial")
 app.register_blueprint(live_bp, url_prefix="/api/v1/live")
 app.register_blueprint(persona_bp, url_prefix="/api/v1/persona")
 app.register_blueprint(quick_check_bp, url_prefix="/api/v1/quick")
-app.register_blueprint(obd2_bp)  # Registers /obd2 directly
+app.register_blueprint(obd2_bp, url_prefix="/obd2")
 
 @app.route("/")
 def index():
