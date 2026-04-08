@@ -2,13 +2,11 @@ services:
   - type: web
     name: lylo-mechanic
     runtime: python
-    rootDir: .
-    buildCommand: pip install --upgrade pip && pip install --no-build-isolation -r requirements.txt
-    startCommand: cd backend && gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 app:app
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r ../requirements.txt
+    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 app:app
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: PYTHON_VERSION
         value: "3.11.0"
-      - key: POETRY_VERSION
-        value: "0.0.0"
