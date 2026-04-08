@@ -39,6 +39,16 @@ def index():
     from flask import render_template
     return render_template("mvp.html")
 
+@app.route("/home")
+def lylo_home():
+    """Premium LYLO landing page — showcases all 4 truth layers."""
+    from flask import render_template, make_response
+    resp = make_response(render_template("lylo_home.html"))
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
 @app.route("/dashboard")
 def dashboard():
     from flask import render_template
