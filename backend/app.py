@@ -16,6 +16,7 @@ from api.routes.persona import persona_bp
 from api.routes.quick_check import quick_check_bp
 from api.routes.obd2 import obd2_bp
 from api.routes.billing import billing_bp
+from api.routes.analyze import analyze_bp
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 CORS(app)
@@ -29,6 +30,7 @@ app.register_blueprint(persona_bp, url_prefix="/api/v1/persona")
 app.register_blueprint(quick_check_bp, url_prefix="/api/v1/quick")
 app.register_blueprint(obd2_bp, url_prefix="/obd2")
 app.register_blueprint(billing_bp, url_prefix="/api/v1/billing")
+app.register_blueprint(analyze_bp, url_prefix="/api/v1/analyze")
 
 @app.route("/")
 def index():

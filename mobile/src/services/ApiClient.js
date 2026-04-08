@@ -236,24 +236,85 @@ class ApiClient {
   }
 
   /**
-   * Quick Check from OBD scan data — extracts DTCs from a fullScan() result
-   * and sends them through the quick-check MVP endpoint.
+   * Unified Analysis — single endpoint for ALL diagnostics.
+   *
+   * OBD and manual input both go through /api/v1/analyze.
+   * Backend handles: check gating, plan filtering, rate limiting.
+   * OBD is just an input method — the product is the backend.
+   *
+   * @param {object} params - { source, codes, input, vehicle, user_id }
+   * @returns {object} Diagnostic result (filtered by plan)
+   */
+  async analyze(params) {
+    apiCallCounter++;
+    const callId = apiCallCounter;
+    const tag = `[API ANALYZE #${callId}]`;
+
+    const url = `${this._baseUrl}/api/v1/analyze`;
+    const requestBody = JSON.stringify(params);
+
+    console.log(tag, 'URL:', url);
+    console.log(tag, 'Source:', params.source);
+    console.log(tag, 'Body:', requestBody.slice(0, 300));
+
+    let resp;
+    const fetchOpts = {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: requestBody,
+      signal: AbortSignal.timeout(30000),
+    };
+
+    try {
+      resp = await fetch(url, fetchOpts);
+    } catch (networkErr) {
+      // Retry once on network failure (stale connection fix)
+      const isNetworkFail = networkErr.message?.includes('Network request failed')
+        || networkErr.name === 'TimeoutError';
+      if (isNetworkFail) {
+        console.warn(tag, 'Retrying analyze...');
+        resp = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: requestBody,
+          signal: AbortSignal.timeout(30000),
+        });
+      } else {
+        throw networkErr;
+      }
+    }
+
+    const responseText = await resp.text();
+
+    if (!resp.ok) {
+      // 403 = check limit reached, 429 = rate limited
+      if (resp.status === 403 || resp.status === 429) {
+        return JSON.parse(responseText); // Return gate/limit response to UI
+      }
+      throw new Error(`Analyze failed (${resp.status}): ${responseText}`);
+    }
+
+    return JSON.parse(responseText);
+  }
+
+  /**
+   * Analyze from OBD scan data — sends codes through unified endpoint.
+   * OBD is the data collector. Backend is the brain.
    *
    * @param {object} scanData - Result from OBDService.fullScan()
-   * @returns {object} Quick check results with ShopScript
+   * @param {object} vehicle  - Optional vehicle info {year, make, model}
+   * @returns {object} Diagnostic result (filtered by plan)
    */
-  async quickCheckFromScan(scanData) {
+  async quickCheckFromScan(scanData, vehicle = null) {
     const tag = `[API quickCheckFromScan]`;
-    console.log(tag, 'Called with scanData type:', typeof scanData);
-    console.log(tag, 'scanData is null:', scanData === null);
-    console.log(tag, 'scanData is undefined:', scanData === undefined);
     console.log(tag, 'raw_dtcs:', JSON.stringify(scanData?.raw_dtcs));
 
     const dtcCodes = (scanData?.raw_dtcs || []).map(d => d?.code).filter(Boolean);
     console.log(tag, 'Extracted DTC codes:', JSON.stringify(dtcCodes));
 
     if (dtcCodes.length === 0) {
-      // No codes found — return a helpful "clean" result
+      // No codes found — return helpful "clean" result locally
+      // (doesn't cost a check — no backend call needed)
       return {
         input: 'OBD Scan (no codes)',
         input_type: 'obd_scan',
@@ -284,9 +345,13 @@ class ApiClient {
       };
     }
 
-    // Send all DTCs as a single input string
-    const input = dtcCodes.join(' ');
-    return this.quickCheck(input);
+    // Send through unified analyze endpoint — backend handles everything
+    return this.analyze({
+      source: 'obd',
+      codes: dtcCodes,
+      raw_dtcs: scanData?.raw_dtcs,
+      vehicle: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`.trim() : undefined,
+    });
   }
 
   /**
