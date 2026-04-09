@@ -54,7 +54,8 @@
           "neverForLocation": true
         }
       ],
-      "./plugins/withBluetoothClassic"
+      "./plugins/withBluetoothClassic",
+      "./plugins/withAndroidBaseColors"
     ],
     "extra": {
       "eas": {
