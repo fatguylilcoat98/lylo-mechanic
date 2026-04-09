@@ -1,0 +1,106 @@
+name: Build Android APK (EAS)
+
+# Builds a preview-profile APK via EAS Build whenever this workflow is
+# triggered. Triggers:
+#
+#   - push to the claude/rebuild-obdlink-ble-aRK2x branch
+#     (the active OBDLink rebuild branch)
+#   - manually from the Actions tab via "Run workflow"
+#
+# ──────────────────────────────────────────────────────────────────
+# ONE-TIME SETUP (takes ~2 minutes, only needs to be done once):
+#
+#   1. Go to https://expo.dev/accounts/[your-account]/settings/access-tokens
+#   2. Click "Create token", name it "lylo-mechanic-ci", copy the token.
+#   3. Go to https://github.com/fatguylilcoat98/lylo-mechanic/settings/secrets/actions
+#   4. Click "New repository secret":
+#        Name:  EXPO_TOKEN
+#        Value: (paste the token)
+#   5. Save.
+#
+# After that, every push to the claude/rebuild-obdlink-ble-aRK2x branch
+# will automatically start an EAS Build and post the APK download URL
+# to the Actions run summary. You just tap the link on your phone,
+# install, done.
+# ──────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - claude/rebuild-obdlink-ble-aRK2x
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/android-build.yml'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - development
+          - production-apk
+
+jobs:
+  build:
+    name: Build ${{ github.event.inputs.profile || 'preview' }} APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Set up EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Android APK (non-interactive)
+        id: eas-build
+        run: |
+          PROFILE="${{ github.event.inputs.profile || 'preview' }}"
+          echo "Building profile: $PROFILE"
+          eas build \
+            --platform android \
+            --profile "$PROFILE" \
+            --non-interactive \
+            --no-wait \
+            --json > build.json
+          cat build.json
+          BUILD_ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('build.json'))[0].id)")
+          BUILD_URL=$(node -e "console.log('https://expo.dev/accounts/' + JSON.parse(require('fs').readFileSync('build.json'))[0].project.ownerAccount.name + '/projects/' + JSON.parse(require('fs').readFileSync('build.json'))[0].project.slug + '/builds/' + JSON.parse(require('fs').readFileSync('build.json'))[0].id)")
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "build_url=$BUILD_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Write build info to run summary
+        run: |
+          {
+            echo "## LYLO Mechanic — Android APK build kicked off"
+            echo ""
+            echo "**Profile:** \`${{ github.event.inputs.profile || 'preview' }}\`"
+            echo "**Branch:** \`${{ github.ref_name }}\`"
+            echo "**Commit:** \`${{ github.sha }}\`"
+            echo ""
+            echo "### Build status page"
+            echo "${{ steps.eas-build.outputs.build_url }}"
+            echo ""
+            echo "Open that link on your phone once the build completes (usually 10-15 minutes)."
+            echo "Tap **Install** to sideload the APK. First install may ask you to allow"
+            echo "installs from your browser — that's Android's standard unknown-sources prompt."
+          } >> "$GITHUB_STEP_SUMMARY"
