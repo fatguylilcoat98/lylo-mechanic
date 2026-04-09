@@ -1,46 +1,36 @@
-/**
- * OBDService — OBD-II protocol layer over ELM327
+/*
+ * LYLO Mechanic — OBDService
  *
- * Handles the ELM327 AT command set used by OBDLink MX+.
- * Translates raw hex responses into structured vehicle data
- * matching the backend's OBDSessionInput schema.
+ * OBD-II / ELM327 domain logic. Lives on top of BluetoothService +
+ * AdapterSession. This file does NOT own the transport, the buffer,
+ * the queue, or the parser — those all live in obd/session.js.
  *
- * Protocol flow:
- *   1. ATZ       — Reset adapter
- *   2. ATE0      — Echo off
- *   3. ATL0      — Linefeeds off
- *   4. ATS0      — Spaces off (compact hex)
- *   5. ATSP0     — Auto-detect protocol
- *   6. 0101      — Monitor status (MIL, DTC count)
- *   7. 03        — Read stored DTCs
- *   8. 07        — Read pending DTCs
- *   9. 0105      — Coolant temp
- *  10. 010C      — Engine RPM
- *  11. 010D      — Vehicle speed
- *  12. 0142      — Battery voltage
- *  13. 0106/0107 — Short/long term fuel trim
- *  14. 0101      — Readiness monitors
+ * What OBDService owns:
+ *   - Init sequence (delegated to session.initialize())
+ *   - PID definitions and parsing formulas
+ *   - DTC decoding (Mode 03 / 07)
+ *   - VIN read (Mode 09 PID 02) and NHTSA VIN decode
+ *   - fullScan() — the high-level "scan the car" routine
  */
 
 import BluetoothService from './BluetoothService';
+import { extractHexBytes } from './obd/parser';
 
-// OBD-II Mode 01 PID definitions: {pid, name, formula(bytes) -> value, unit}
+// Mode 01 PID definitions. parse() receives an int[] of data bytes.
 const PID_DEFS = {
-  '05': {name: 'coolant_temp', unit: 'F', parse: b => (b[0] - 40) * 9 / 5 + 32},
-  '0C': {name: 'rpm', unit: 'RPM', parse: b => (b[0] * 256 + b[1]) / 4},
-  '0D': {name: 'vehicle_speed', unit: 'mph', parse: b => Math.round(b[0] * 0.621371)},
-  '42': {name: 'battery_voltage', unit: 'V', parse: b => (b[0] * 256 + b[1]) / 1000},
-  '06': {name: 'short_fuel_trim_1', unit: '%', parse: b => (b[0] - 128) * 100 / 128},
-  '07': {name: 'long_fuel_trim_1', unit: '%', parse: b => (b[0] - 128) * 100 / 128},
-  '0F': {name: 'intake_air_temp', unit: 'F', parse: b => (b[0] - 40) * 9 / 5 + 32},
-  '10': {name: 'maf_flow', unit: 'g/s', parse: b => (b[0] * 256 + b[1]) / 100},
-  '11': {name: 'throttle_pos', unit: '%', parse: b => b[0] * 100 / 255},
+  '05': { name: 'coolant_temp',     unit: 'F',   parse: b => (b[0] - 40) * 9 / 5 + 32 },
+  '0C': { name: 'rpm',              unit: 'RPM', parse: b => (b[0] * 256 + b[1]) / 4 },
+  '0D': { name: 'vehicle_speed',    unit: 'mph', parse: b => Math.round(b[0] * 0.621371) },
+  '42': { name: 'battery_voltage',  unit: 'V',   parse: b => (b[0] * 256 + b[1]) / 1000 },
+  '06': { name: 'short_fuel_trim_1',unit: '%',   parse: b => (b[0] - 128) * 100 / 128 },
+  '07': { name: 'long_fuel_trim_1', unit: '%',   parse: b => (b[0] - 128) * 100 / 128 },
+  '0F': { name: 'intake_air_temp',  unit: 'F',   parse: b => (b[0] - 40) * 9 / 5 + 32 },
+  '10': { name: 'maf_flow',         unit: 'g/s', parse: b => (b[0] * 256 + b[1]) / 100 },
+  '11': { name: 'throttle_pos',     unit: '%',   parse: b => b[0] * 100 / 255 },
 };
 
-// PIDs to read during a full scan (Mode 01)
 const SCAN_PIDS = ['05', '0C', '0D', '42', '06', '07', '0F', '10', '11'];
 
-// Readiness monitor bit positions (from Mode 01 PID 01, bytes C and D)
 const MONITOR_NAMES = [
   'misfire', 'fuel_system', 'components', 'catalyst',
   'heated_catalyst', 'evap_system', 'secondary_air',
@@ -52,236 +42,221 @@ class OBDService {
   constructor() {
     this._initialized = false;
     this._protocol = null;
+    this._adapterId = null;
   }
 
-  get initialized() {
-    return this._initialized;
-  }
+  get initialized() { return this._initialized; }
+  get protocol() { return this._protocol; }
+  get adapterId() { return this._adapterId; }
 
-  get protocol() {
-    return this._protocol;
-  }
-
-  /**
-   * Initialize the ELM327 adapter. Must be called after Bluetooth connect.
-   * Returns adapter info string.
-   */
+  // ── Initialization ─────────────────────────────────────────────
+  // Delegates to the session's initialize() which runs the full
+  // ATZ/ATE0/ATL0/ATS0/ATH0/ATSP0 sequence with per-command timeouts.
   async initialize() {
     try {
-      // Reset
-      const resetResp = await BluetoothService.sendCommand('ATZ');
+      const info = await BluetoothService.initializeSession();
+      this._adapterId = info.adapter;
+      this._protocol = info.protocol;
 
-      // Configure for optimal OBD communication
-      await BluetoothService.sendCommand('ATE0');   // Echo off
-      await BluetoothService.sendCommand('ATL0');   // Linefeeds off
-      await BluetoothService.sendCommand('ATS0');   // Spaces off
-      await BluetoothService.sendCommand('ATH0');   // Headers off
-      await BluetoothService.sendCommand('ATSP0');  // Auto protocol
+      // Probe: 0100 to force protocol detection. A few adapters need
+      // this before ATDPN returns a useful answer.
+      try {
+        await BluetoothService.sendCommand('0100', { timeoutMs: 8000 });
+      } catch (e) {
+        console.warn('[OBD] 0100 probe failed (non-fatal): ' + e.message);
+      }
 
-      // Detect protocol with a test query
-      await BluetoothService.sendCommand('0100');
-      const proto = await BluetoothService.sendCommand('ATDPN');
-      this._protocol = proto.trim();
       this._initialized = true;
-
       return {
-        adapter: resetResp.trim(),
-        protocol: this._protocol,
+        adapter: this._adapterId || 'unknown',
+        protocol: this._protocol || 'auto',
       };
     } catch (err) {
       this._initialized = false;
-      throw new Error(`ELM327 initialization failed: ${err.message}`);
+      throw new Error('Adapter initialization failed: ' + err.message);
     }
   }
 
-  /**
-   * Read VIN from Mode 09 PID 02.
-   * Returns the 17-character VIN string, or null if not supported.
-   */
-  async readVIN() {
-    try {
-      const raw = await BluetoothService.sendCommand('0902');
-      // Response may come as multiple lines of hex
-      // Format: 49 02 01 XX XX XX ... (up to 5 frames)
-      const lines = raw.split('\n').map(l => l.replace(/\s/g, '').toUpperCase());
-      let hexChars = '';
-
-      for (const line of lines) {
-        if (line.startsWith('NODATA') || line.startsWith('ERROR') ||
-            line.startsWith('?') || line.length < 4) continue;
-
-        // Strip the mode/pid prefix bytes
-        let hex = line;
-        // Multi-frame: "490201..." "49020201..." etc
-        if (hex.startsWith('4902')) {
-          // Skip "4902" + 1 byte sequence number
-          hex = hex.slice(6);
-        }
-        hexChars += hex;
-      }
-
-      if (hexChars.length === 0) return null;
-
-      // Convert hex pairs to ASCII characters
-      let vin = '';
-      for (let i = 0; i < hexChars.length && vin.length < 17; i += 2) {
-        const code = parseInt(hexChars.substr(i, 2), 16);
-        // Valid VIN characters: 0-9, A-Z (no I, O, Q)
-        if (code >= 0x20 && code <= 0x7E) {
-          vin += String.fromCharCode(code);
-        }
-      }
-
-      // VIN must be exactly 17 chars
-      if (vin.length >= 17) {
-        return vin.substring(0, 17);
-      }
-      return vin.length > 0 ? vin : null;
-    } catch (e) {
-      console.warn('[OBD] VIN read failed:', e.message);
-      return null;
-    }
-  }
-
-  /**
-   * Decode a VIN into year, make, model, engine using NHTSA API.
-   * Returns {year, make, model, engine} or null.
-   */
-  async decodeVIN(vin) {
-    if (!vin || vin.length < 17) return null;
-    try {
-      const url = `https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-
-      if (!data.Results) return null;
-
-      const get = (varId) => {
-        const item = data.Results.find(r => r.VariableId === varId);
-        return item?.Value && item.Value.trim() !== '' ? item.Value.trim() : null;
-      };
-
-      return {
-        year: get(29) || '',      // Model Year
-        make: get(26) || '',      // Make
-        model: get(28) || '',     // Model
-        engine: [get(13), get(14)].filter(Boolean).join(' ') || '', // Displacement + Cylinders
-        vin: vin,
-      };
-    } catch (e) {
-      console.warn('[OBD] VIN decode failed:', e.message);
-      return null;
-    }
-  }
-
-  /**
-   * Read MIL status and DTC count from Mode 01 PID 01.
-   * Returns {milOn: bool, dtcCount: number, monitors: {name: 'complete'|'incomplete'}}
-   */
-  async readMonitorStatus() {
-    const raw = await BluetoothService.sendCommand('0101');
-    const bytes = this._parseHexResponse(raw, '41', '01');
-
-    if (!bytes || bytes.length < 4) {
-      return {milOn: false, dtcCount: 0, monitors: {}};
-    }
-
-    const milOn = (bytes[0] & 0x80) !== 0;
-    const dtcCount = bytes[0] & 0x7F;
-
-    // Parse readiness monitors from bytes 2 and 3
-    const monitors = {};
-    const testAvail = bytes[1]; // which tests are available
-    const testIncomplete = bytes[2]; // which tests are incomplete
-
-    MONITOR_NAMES.forEach((name, i) => {
-      if (i < 8) {
-        const bit = 1 << i;
-        if (testAvail & bit) {
-          monitors[name] = (testIncomplete & bit) ? 'incomplete' : 'complete';
-        }
-      }
-    });
-
-    return {milOn, dtcCount, monitors};
-  }
-
-  /**
-   * Read stored DTCs (Mode 03).
-   * Returns array of DTC strings like ["P0420", "P0171", "C0035"]
-   */
-  async readStoredDTCs() {
-    const raw = await BluetoothService.sendCommand('03');
-    return this._parseDTCResponse(raw);
-  }
-
-  /**
-   * Read pending DTCs (Mode 07).
-   * Returns array of DTC strings.
-   */
-  async readPendingDTCs() {
-    const raw = await BluetoothService.sendCommand('07');
-    return this._parseDTCResponse(raw);
-  }
-
-  /**
-   * Read a single PID value.
-   * Returns {name, value, unit} or null if unsupported.
-   */
+  // ── PID read ───────────────────────────────────────────────────
   async readPID(pid) {
     const def = PID_DEFS[pid];
     if (!def) return null;
-
     try {
-      const raw = await BluetoothService.sendCommand('01' + pid);
-      const bytes = this._parseHexResponse(raw, '41', pid);
-
+      const parsed = await BluetoothService.sendCommand('01' + pid);
+      if (!parsed.ok) return null;
+      const bytes = extractHexBytes(parsed, '41', pid);
       if (!bytes || bytes.length === 0) return null;
-
       return {
-        pid: pid,
+        pid,
         name: def.name,
         value: Math.round(def.parse(bytes) * 100) / 100,
         unit: def.unit,
       };
-    } catch {
+    } catch (e) {
+      console.warn('[OBD] readPID ' + pid + ' failed: ' + e.message);
       return null;
     }
   }
 
-  /**
-   * Run a full vehicle scan. Reads all DTCs + all supported PIDs.
-   * Returns data shaped for the backend's OBDSessionInput schema.
-   *
-   * onProgress(step, total, message) is called for each step.
-   */
-  async fullScan(onProgress) {
-    const totalSteps = 4 + SCAN_PIDS.length; // monitor + stored + pending + PIDs
-    let step = 0;
+  // ── Monitor status (Mode 01 PID 01) ────────────────────────────
+  async readMonitorStatus() {
+    try {
+      const parsed = await BluetoothService.sendCommand('0101');
+      if (!parsed.ok) return { milOn: false, dtcCount: 0, monitors: {} };
+      const bytes = extractHexBytes(parsed, '41', '01');
+      if (!bytes || bytes.length < 4) {
+        return { milOn: false, dtcCount: 0, monitors: {} };
+      }
+      const milOn = (bytes[0] & 0x80) !== 0;
+      const dtcCount = bytes[0] & 0x7F;
+      const monitors = {};
+      const testAvail = bytes[1];
+      const testIncomplete = bytes[2];
+      MONITOR_NAMES.forEach((name, i) => {
+        if (i < 8) {
+          const bit = 1 << i;
+          if (testAvail & bit) {
+            monitors[name] = (testIncomplete & bit) ? 'incomplete' : 'complete';
+          }
+        }
+      });
+      return { milOn, dtcCount, monitors };
+    } catch (e) {
+      console.warn('[OBD] readMonitorStatus failed: ' + e.message);
+      return { milOn: false, dtcCount: 0, monitors: {} };
+    }
+  }
 
+  // ── DTCs ───────────────────────────────────────────────────────
+  async readStoredDTCs() {
+    const parsed = await BluetoothService.sendCommand('03');
+    return this._parseDTCLines(parsed, '43');
+  }
+
+  async readPendingDTCs() {
+    const parsed = await BluetoothService.sendCommand('07');
+    return this._parseDTCLines(parsed, '47');
+  }
+
+  async clearDTCs() {
+    const parsed = await BluetoothService.sendCommand('04');
+    if (!parsed.ok) {
+      throw new Error('Clear DTCs failed: ' + (parsed.error || 'unknown'));
+    }
+  }
+
+  _parseDTCLines(parsed, expectedPrefix) {
+    if (!parsed.ok) return [];
+    const PREFIX_MAP = {
+      '0': 'P0', '1': 'P1', '2': 'P2', '3': 'P3',
+      '4': 'C0', '5': 'C1', '6': 'C2', '7': 'C3',
+      '8': 'B0', '9': 'B1', 'A': 'B2', 'B': 'B3',
+      'C': 'U0', 'D': 'U1', 'E': 'U2', 'F': 'U3',
+    };
+    const dtcs = [];
+    for (const line of parsed.lines) {
+      let hex = line.replace(/\s+/g, '').toUpperCase();
+      if (hex.startsWith(expectedPrefix)) {
+        hex = hex.slice(expectedPrefix.length);
+      }
+      for (let i = 0; i + 4 <= hex.length; i += 4) {
+        const chunk = hex.substr(i, 4);
+        if (chunk === '0000') continue;
+        const firstNibble = chunk[0];
+        const prefix = PREFIX_MAP[firstNibble];
+        if (!prefix) continue;
+        const code = prefix + chunk.slice(1);
+        if (code !== 'P0000' && !dtcs.includes(code)) {
+          dtcs.push(code);
+        }
+      }
+    }
+    return dtcs;
+  }
+
+  // ── VIN ────────────────────────────────────────────────────────
+  async readVIN() {
+    try {
+      const parsed = await BluetoothService.sendCommand('0902', { timeoutMs: 6000 });
+      if (!parsed.ok) return null;
+
+      let hexChars = '';
+      for (const line of parsed.lines) {
+        let hex = line.replace(/\s+/g, '').toUpperCase();
+        if (hex.startsWith('4902')) hex = hex.slice(6); // drop "49 02 SS"
+        hexChars += hex;
+      }
+      if (hexChars.length === 0) return null;
+
+      let vin = '';
+      for (let i = 0; i < hexChars.length && vin.length < 17; i += 2) {
+        const code = parseInt(hexChars.substr(i, 2), 16);
+        if (code >= 0x20 && code <= 0x7E) vin += String.fromCharCode(code);
+      }
+      return vin.length >= 17 ? vin.substring(0, 17) : (vin.length > 0 ? vin : null);
+    } catch (e) {
+      console.warn('[OBD] VIN read failed: ' + e.message);
+      return null;
+    }
+  }
+
+  async decodeVIN(vin) {
+    if (!vin || vin.length < 17) return null;
+    try {
+      const url = 'https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/' +
+        vin + '?format=json';
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (!data.Results) return null;
+      const get = (id) => {
+        const item = data.Results.find((r) => r.VariableId === id);
+        return item && item.Value && item.Value.trim() !== '' ? item.Value.trim() : null;
+      };
+      return {
+        year: get(29) || '',
+        make: get(26) || '',
+        model: get(28) || '',
+        engine: [get(13), get(14)].filter(Boolean).join(' ') || '',
+        vin,
+      };
+    } catch (e) {
+      console.warn('[OBD] VIN decode failed: ' + e.message);
+      return null;
+    }
+  }
+
+  // ── Friendly wrappers for the six "hero" metrics ───────────────
+  async getRPM() { return this.readPID('0C'); }
+  async getSpeed() { return this.readPID('0D'); }
+  async getCoolantTemp() { return this.readPID('05'); }
+  async getBatteryVoltage() { return this.readPID('42'); }
+
+  async sendRawCommand(cmd, options) {
+    return BluetoothService.sendCommand(cmd, options);
+  }
+
+  // ── Full scan ──────────────────────────────────────────────────
+  async fullScan(onProgress) {
+    const totalSteps = 3 + SCAN_PIDS.length;
+    let step = 0;
     const report = (msg) => {
       step++;
       if (onProgress) onProgress(step, totalSteps, msg);
     };
 
-    // 1. Monitor status
     report('Reading monitor status...');
     const monitorStatus = await this.readMonitorStatus();
 
-    // 2. Stored DTCs
     report('Reading stored fault codes...');
     const storedDTCs = await this.readStoredDTCs();
 
-    // 3. Pending DTCs
     report('Reading pending fault codes...');
     const pendingDTCs = await this.readPendingDTCs();
 
-    // 4. PIDs
     const pidReadings = {};
     for (const pid of SCAN_PIDS) {
       const def = PID_DEFS[pid];
-      report(`Reading ${def?.name || pid}...`);
-
+      report('Reading ' + (def ? def.name : pid) + '...');
       const reading = await this.readPID(pid);
       if (reading) {
         pidReadings[reading.name] = {
@@ -291,11 +266,9 @@ class OBDService {
       }
     }
 
-    // Build OBDSessionInput-compatible payload
     const allDTCs = [...new Set([...storedDTCs, ...pendingDTCs])];
-
     return {
-      raw_dtcs: allDTCs.map(code => ({code, source: 'stored'})),
+      raw_dtcs: allDTCs.map((code) => ({ code, source: 'stored' })),
       raw_pids: pidReadings,
       freeze_frame: {},
       readiness_monitors: monitorStatus.monitors,
@@ -305,89 +278,6 @@ class OBDService {
       connection_quality: 'stable',
       protocol: this._protocol || 'auto',
     };
-  }
-
-  /**
-   * Clear stored DTCs and reset MIL (Mode 04).
-   * WARNING: This clears all codes and resets monitors.
-   */
-  async clearDTCs() {
-    await BluetoothService.sendCommand('04');
-  }
-
-  // ── Internal parsing ──────────────────────────────────────────
-
-  /**
-   * Parse a hex response from the ELM327.
-   * Strips the mode+pid echo bytes, returns data bytes as array of ints.
-   * Example: "4105BE" for Mode 01 PID 05 → [0xBE] (190 decimal)
-   */
-  _parseHexResponse(raw, expectedMode, expectedPid) {
-    const lines = raw.split('\n').map(l => l.replace(/\s/g, '').toUpperCase());
-
-    for (const line of lines) {
-      if (line.startsWith('NODATA') || line.startsWith('ERROR') ||
-          line.startsWith('UNABLE') || line.startsWith('?')) {
-        return null;
-      }
-
-      const prefix = (expectedMode + expectedPid).toUpperCase();
-      if (line.startsWith(prefix)) {
-        const hex = line.slice(prefix.length);
-        const bytes = [];
-        for (let i = 0; i < hex.length; i += 2) {
-          bytes.push(parseInt(hex.substr(i, 2), 16));
-        }
-        return bytes;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Parse a DTC response (Mode 03 or 07).
-   * Each DTC is 2 bytes:
-   *   Byte 1 high nibble → system prefix (P/C/B/U)
-   *   Byte 1 low nibble  → first digit
-   *   Byte 2             → last two digits
-   */
-  _parseDTCResponse(raw) {
-    const lines = raw.split('\n').map(l => l.replace(/\s/g, '').toUpperCase());
-    const dtcs = [];
-    const PREFIX_MAP = {
-      '0': 'P0', '1': 'P1', '2': 'P2', '3': 'P3',
-      '4': 'C0', '5': 'C1', '6': 'C2', '7': 'C3',
-      '8': 'B0', '9': 'B1', 'A': 'B2', 'B': 'B3',
-      'C': 'U0', 'D': 'U1', 'E': 'U2', 'F': 'U3',
-    };
-
-    for (const line of lines) {
-      if (line.startsWith('NODATA') || line.length < 4) continue;
-
-      // Strip mode response byte if present (43 for Mode 03, 47 for Mode 07)
-      let hex = line;
-      if (hex.startsWith('43') || hex.startsWith('47')) {
-        hex = hex.slice(2);
-      }
-
-      // Parse pairs of bytes as DTCs
-      for (let i = 0; i + 3 <= hex.length; i += 4) {
-        const chunk = hex.substr(i, 4);
-        if (chunk === '0000') continue; // Padding
-
-        const firstNibble = chunk[0].toUpperCase();
-        const prefix = PREFIX_MAP[firstNibble];
-        if (!prefix) continue;
-
-        const code = prefix + chunk.slice(1);
-        if (code !== 'P0000' && !dtcs.includes(code)) {
-          dtcs.push(code);
-        }
-      }
-    }
-
-    return dtcs;
   }
 }
 

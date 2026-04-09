@@ -59,13 +59,24 @@ export default function ConnectScreen({navigation}) {
     setSelectedDevice(device);
     setError(null);
 
+    let connInfo = null;
     try {
-      const connInfo = await BluetoothService.connect(device.id, device.type);
+      connInfo = await BluetoothService.connect(device.id, device.type);
+    } catch (err) {
+      setError(`Connect failed: ${err.message}`);
+      setPhase('idle');
+      setSelectedDevice(null);
+      return;
+    }
+
+    setPhase('initializing');
+    try {
       const info = await OBDService.initialize();
       setInitInfo({...info, profile: connInfo.profile});
       setPhase('ready');
     } catch (err) {
-      setError(`Connection failed: ${err.message}`);
+      setError(`Adapter init failed: ${err.message}`);
+      try { await BluetoothService.disconnect(); } catch (_) {}
       setPhase('idle');
       setSelectedDevice(null);
     }
@@ -176,6 +187,13 @@ export default function ConnectScreen({navigation}) {
                 <ActivityIndicator size="small" color={C.accent} />
                 <Text style={s.loadingText}>
                   Connecting to {selectedDevice?.name}...
+                </Text>
+              </View>
+            ) : phase === 'initializing' ? (
+              <View style={s.loadingRow}>
+                <ActivityIndicator size="small" color={C.accent} />
+                <Text style={s.loadingText}>
+                  Initializing adapter (ATZ / ATE0 / ATSP0)...
                 </Text>
               </View>
             ) : (
