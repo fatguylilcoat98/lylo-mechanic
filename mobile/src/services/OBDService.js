@@ -31,6 +31,21 @@ const PID_DEFS = {
 
 const SCAN_PIDS = ['05', '0C', '0D', '42', '06', '07', '0F', '10', '11'];
 
+// Fixed smoke-test sequence. Runs exactly as spec'd, in order.
+// ATZ is first so the adapter starts from a clean slate; ATE0 is
+// second so every response that follows is echo-free; the remaining
+// six commands exercise the identify / protocol / live-data path.
+const SMOKE_TEST_STEPS = [
+  { cmd: 'ATZ',   timeoutMs: 5000, label: 'Reset adapter' },
+  { cmd: 'ATE0',  timeoutMs: 4000, label: 'Echo off' },
+  { cmd: 'ATI',   timeoutMs: 4000, label: 'Identify adapter' },
+  { cmd: 'ATDPN', timeoutMs: 4000, label: 'Protocol number' },
+  { cmd: '0100',  timeoutMs: 8000, label: 'Supported PIDs / force proto' },
+  { cmd: '010C',  timeoutMs: 4000, label: 'Engine RPM' },
+  { cmd: '010D',  timeoutMs: 4000, label: 'Vehicle speed' },
+  { cmd: '0105',  timeoutMs: 4000, label: 'Coolant temp' },
+];
+
 const MONITOR_NAMES = [
   'misfire', 'fuel_system', 'components', 'catalyst',
   'heated_catalyst', 'evap_system', 'secondary_air',
@@ -75,6 +90,116 @@ class OBDService {
       this._initialized = false;
       throw new Error('Adapter initialization failed: ' + err.message);
     }
+  }
+
+  // ── Smoke test ─────────────────────────────────────────────────
+  // Runs the fixed smoke-test command list exactly in order on the
+  // currently-open session. Does NOT reconnect, NOT rediscover, does
+  // NOT touch VIN or fullScan. Each step goes through the session
+  // command queue so they're serialized automatically.
+  //
+  // onStep(event) is called before and after each command:
+  //   { seq, total, cmd, label, phase: 'tx', timeoutMs }
+  //   { seq, total, cmd, label, phase: 'rx', parsed, elapsedMs }
+  //   { seq, total, cmd, label, phase: 'err', error, elapsedMs }
+  //
+  // Returns { ok, steps, failedAt } at the end.
+  async runSmokeTest(onStep) {
+    const emit = (evt) => {
+      if (!onStep) return;
+      try { onStep(evt); } catch (_) {}
+    };
+    const total = SMOKE_TEST_STEPS.length;
+    const steps = [];
+
+    for (let i = 0; i < SMOKE_TEST_STEPS.length; i++) {
+      const step = SMOKE_TEST_STEPS[i];
+      const seq = i + 1;
+      const t0 = Date.now();
+
+      emit({
+        seq, total, cmd: step.cmd, label: step.label,
+        phase: 'tx', timeoutMs: step.timeoutMs,
+      });
+
+      try {
+        const parsed = await BluetoothService.sendCommand(step.cmd, {
+          timeoutMs: step.timeoutMs,
+        });
+        const elapsedMs = Date.now() - t0;
+
+        // Capture adapter identity and protocol for display
+        if (step.cmd === 'ATI' && parsed.ok && parsed.lines.length > 0) {
+          this._adapterId = parsed.lines[0];
+        }
+        if (step.cmd === 'ATDPN' && parsed.ok && parsed.lines.length > 0) {
+          this._protocol = parsed.lines[0].replace(/^A/i, '');
+        }
+
+        // Decode live-data PIDs so the UI can show meaningful numbers
+        let decoded = null;
+        if (step.cmd === '010C') {
+          const bytes = extractHexBytes(parsed, '41', '0C');
+          if (bytes && bytes.length >= 2) {
+            decoded = { label: 'rpm', value: (bytes[0] * 256 + bytes[1]) / 4, unit: 'RPM' };
+          }
+        } else if (step.cmd === '010D') {
+          const bytes = extractHexBytes(parsed, '41', '0D');
+          if (bytes && bytes.length >= 1) {
+            decoded = { label: 'speed', value: Math.round(bytes[0] * 0.621371), unit: 'mph' };
+          }
+        } else if (step.cmd === '0105') {
+          const bytes = extractHexBytes(parsed, '41', '05');
+          if (bytes && bytes.length >= 1) {
+            decoded = { label: 'coolant', value: Math.round((bytes[0] - 40) * 9 / 5 + 32), unit: 'F' };
+          }
+        }
+
+        emit({
+          seq, total, cmd: step.cmd, label: step.label,
+          phase: 'rx', parsed, elapsedMs, decoded,
+        });
+        steps.push({ cmd: step.cmd, parsed, elapsedMs, decoded });
+
+        // ATZ and live PIDs are allowed to come back "not ok" (NO DATA,
+        // SEARCHING quirks) without aborting the whole smoke test,
+        // so the user can still see the later steps. AT commands like
+        // ATE0/ATI/ATDPN must succeed.
+        const hardCmds = ['ATE0', 'ATI', 'ATDPN'];
+        if (!parsed.ok && hardCmds.indexOf(step.cmd) !== -1) {
+          return { ok: false, steps, failedAt: step.cmd, error: parsed.error };
+        }
+      } catch (err) {
+        const elapsedMs = Date.now() - t0;
+        emit({
+          seq, total, cmd: step.cmd, label: step.label,
+          phase: 'err', error: err.message || String(err), elapsedMs,
+        });
+        steps.push({ cmd: step.cmd, error: err.message, elapsedMs });
+        return { ok: false, steps, failedAt: step.cmd, error: err.message };
+      }
+    }
+
+    this._initialized = true;
+    return { ok: true, steps };
+  }
+
+  // Read RPM, speed, coolant in one shot. All three requests go into
+  // the session queue; the queue serializes them, so this is safe to
+  // call from a tight loop without commands stepping on each other.
+  async readLiveSnapshot() {
+    const t0 = Date.now();
+    const [rpm, speed, coolant] = await Promise.all([
+      this.readPID('0C'),
+      this.readPID('0D'),
+      this.readPID('05'),
+    ]);
+    return {
+      rpm,
+      speed,
+      coolantTemp: coolant,
+      elapsedMs: Date.now() - t0,
+    };
   }
 
   // ── PID read ───────────────────────────────────────────────────
