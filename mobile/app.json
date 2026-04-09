@@ -4,17 +4,17 @@
     "slug": "lylo-mechanic",
     "version": "0.2.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/lylo_mechanic_logo_.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/lylo_mechanic_logo_.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0a0c0f"
+      "backgroundColor": "#070b14"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a0c0f"
+        "foregroundImage": "./assets/lylo_mechanic_logo_.png",
+        "backgroundColor": "#070b14"
       },
       "package": "com.goodneighborguard.lylomechanic",
       "permissions": [

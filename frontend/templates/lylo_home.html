@@ -11,23 +11,32 @@ Truth · Safety · We Got Your Back
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LYLO Mechanic — The AI That Can't Lie To You About Your Car</title>
 <meta name="description" content="LYLO scans your vehicle, catches hidden problems, warns about coming failures, and audits mechanic quotes against real evidence. Built on CLASPION governance.">
+<link rel="icon" type="image/png" href="/static/lylo_mechanic_logo_.png">
+<link rel="apple-touch-icon" href="/static/lylo_mechanic_logo_.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0b0f;
-    --bg-elevated: #12141a;
-    --bg-card: #171a22;
-    --bg-card-hover: #1c202a;
-    --border: #1f232d;
-    --border-bright: #2d3342;
-    --text: #e8eaed;
-    --text-muted: #8e95a5;
-    --text-dim: #5c6373;
+    /* dark navy / graphite — honest, technical, protective */
+    --bg: #070b14;
+    --bg-elevated: #0d1422;
+    --bg-card: #111a2c;
+    --bg-card-hover: #16213a;
+    --border: #1c2740;
+    --border-bright: #2a3a5c;
+    --text: #e8eef8;
+    --text-muted: #8a97b3;
+    --text-dim: #5b6680;
 
-    --accent: #d4a24c;        /* warm brass — expensive, mechanical */
-    --accent-bright: #e8b85a;
-    --accent-soft: rgba(212, 162, 76, 0.08);
-    --accent-glow: rgba(212, 162, 76, 0.2);
+    /* PRIMARY ACCENT — light blue, electric but serious */
+    --accent: #60a5fa;
+    --accent-bright: #93c5fd;
+    --accent-soft: rgba(96, 165, 250, 0.08);
+    --accent-glow: rgba(96, 165, 250, 0.22);
+
+    /* depth tokens */
+    --navy: #0a1930;          /* dark blue depth */
+    --slate: #475569;         /* graphite neutral */
+    --slate-soft: #334155;
 
     --green: #4ade80;
     --red: #ef4444;
@@ -55,9 +64,9 @@ Truth · Safety · We Got Your Back
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 162, 76, 0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 30% at 90% 30%, rgba(96, 165, 250, 0.04) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 30% at 10% 70%, rgba(167, 139, 250, 0.04) 0%, transparent 50%);
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(96, 165, 250, 0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 90% 30%, rgba(56, 189, 248, 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 30% at 10% 70%, rgba(71, 85, 105, 0.08) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
   }
@@ -104,17 +113,12 @@ Truth · Safety · We Got Your Back
   }
 
   .logo-mark {
-    width: 28px;
-    height: 28px;
-    border-radius: 7px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-bright));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    font-weight: 700;
-    color: #0a0b0f;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.35));
   }
 
   .nav-links {
@@ -161,7 +165,7 @@ Truth · Safety · We Got Your Back
     gap: 8px;
     padding: 8px 16px;
     background: var(--accent-soft);
-    border: 1px solid rgba(212, 162, 76, 0.25);
+    border: 1px solid rgba(96, 165, 250, 0.28);
     border-radius: 20px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
@@ -238,7 +242,7 @@ Truth · Safety · We Got Your Back
 
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 50px -10px rgba(212, 162, 76, 0.4);
+    box-shadow: 0 14px 50px -10px rgba(96, 165, 250, 0.45);
   }
 
   .btn-secondary {
@@ -359,7 +363,7 @@ Truth · Safety · We Got Your Back
   }
 
   .layer-card[data-layer="truth"]    { --layer-color: var(--accent); }
-  .layer-card[data-layer="health"]   { --layer-color: var(--blue); }
+  .layer-card[data-layer="health"]   { --layer-color: var(--cyan); }
   .layer-card[data-layer="blackbox"] { --layer-color: var(--purple); }
   .layer-card[data-layer="auditor"]  { --layer-color: var(--red); }
 
@@ -619,6 +623,127 @@ Truth · Safety · We Got Your Back
     line-height: 1.6;
   }
 
+  /* ═══ DOWNLOAD SECTION ═══ */
+  .download-section {
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .download-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 40px;
+    align-items: center;
+  }
+
+  .download-card {
+    background: linear-gradient(135deg, var(--navy), var(--bg-card));
+    border: 1px solid var(--border-bright);
+    border-radius: 18px;
+    padding: 40px 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .download-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+
+  .download-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .download-platform {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .download-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .download-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  .download-logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    margin: 0 auto 20px;
+    display: block;
+    object-fit: contain;
+    filter: drop-shadow(0 0 22px rgba(96, 165, 250, 0.45));
+  }
+
+  /* ═══ HARDWARE REQUIRED CALLOUT ═══ */
+  .hardware-block {
+    margin-top: 60px;
+    padding: 36px 40px;
+    background: linear-gradient(135deg, var(--navy), var(--bg-card));
+    border: 1px solid var(--border-bright);
+    border-radius: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hardware-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+
+  .hardware-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .hardware-title {
+    font-size: clamp(20px, 2.5vw, 26px);
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .hardware-copy {
+    font-size: 15px;
+    color: var(--text-muted);
+    max-width: 520px;
+    margin: 0 auto 24px;
+    line-height: 1.6;
+  }
+
   /* ═══ PRICING ═══ */
   .pricing-grid {
     display: grid;
@@ -639,7 +764,7 @@ Truth · Safety · We Got Your Back
 
   .price-card.featured {
     border: 1px solid var(--accent);
-    background: linear-gradient(180deg, rgba(212, 162, 76, 0.04), var(--bg-card));
+    background: linear-gradient(180deg, rgba(96, 165, 250, 0.06), var(--bg-card));
     transform: scale(1.02);
   }
 
@@ -861,14 +986,15 @@ Truth · Safety · We Got Your Back
 <nav class="nav">
   <div class="container nav-inner">
     <a href="/" class="logo">
-      <div class="logo-mark">L</div>
+      <img src="/static/lylo_mechanic_logo_.png" alt="LYLO Mechanic" class="logo-mark">
       LYLO
     </a>
     <div class="nav-links">
-      <a href="#layers" class="nav-link">How It Works</a>
-      <a href="#demo" class="nav-link">See It In Action</a>
+      <a href="#ripoff" class="nav-link">Don't Get Ripped Off</a>
+      <a href="#layers" class="nav-link">Four Layers</a>
       <a href="#pricing" class="nav-link">Pricing</a>
-      <a href="#pricing" class="nav-cta">Get Started</a>
+      <a href="#download" class="nav-link">Download</a>
+      <a href="#download" class="nav-cta">Download App</a>
     </div>
   </div>
 </nav>
@@ -889,11 +1015,14 @@ Truth · Safety · We Got Your Back
       built on an execution governance system that refuses to fake confidence.
     </p>
     <div class="hero-cta">
-      <a href="#pricing" class="btn-primary">
-        Get Started — $4.99/mo
+      <a href="#download" class="btn-primary">
+        Download App
       </a>
-      <a href="#demo" class="btn-secondary">
-        See It In Action →
+      <a href="#pricing" class="btn-secondary">
+        See Pricing
+      </a>
+      <a href="https://www.obdlink.com/products/" target="_blank" rel="noopener" class="btn-secondary">
+        Get the OBDLink MX+
       </a>
     </div>
     <div class="hero-trust">
@@ -913,6 +1042,56 @@ Truth · Safety · We Got Your Back
         <div class="trust-num">OBD</div>
         <div class="trust-label">Real Hardware</div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DON'T GET RIPPED OFF — THE PAIN PUNCH ═══ -->
+<section id="ripoff" class="demo-section">
+  <div class="container">
+    <div class="section-label">Don't Get Ripped Off</div>
+    <h2 class="section-title">A mechanic just quoted you $1,800. Now what?</h2>
+    <p class="section-sub">
+      Most drivers have no way to push back. They pay and hope. LYLO checks the
+      real OBD evidence on your car and tells you, in plain English, whether the
+      quote is supported — or invented.
+    </p>
+
+    <div class="demo-grid">
+
+      <div class="demo-col before">
+        <div class="demo-label">▼ Without LYLO</div>
+        <div class="demo-title">You trust the mechanic</div>
+        <div class="demo-quote">
+          "Your catalytic converter is going bad. It'll be $1,800.
+          We can have you back on the road by Friday."
+        </div>
+        <ul class="demo-evidence">
+          <li><span class="mark">✕</span>No way to verify the diagnosis</li>
+          <li><span class="mark">✕</span>No knowledge of what codes the car actually has</li>
+          <li><span class="mark">✕</span>No idea if $1,800 is fair</li>
+          <li><span class="mark">✕</span>No way to push back without being rude</li>
+        </ul>
+        <div class="demo-verdict">You pay $1,800 and hope for the best</div>
+      </div>
+
+      <div class="demo-col after">
+        <div class="demo-label">▲ With LYLO</div>
+        <div class="demo-title">You check the evidence</div>
+        <div class="demo-quote">
+          <strong>LYLO Quote Auditor:</strong><br>
+          "The data does NOT support this repair. Your scan shows no P0420,
+          no O2 sensor anomaly, fuel trims normal."
+        </div>
+        <ul class="demo-evidence">
+          <li><span class="mark">✓</span>Real OBD evidence cross-referenced</li>
+          <li><span class="mark">✓</span>Typical cost range shown: $400-$2,200</li>
+          <li><span class="mark">✓</span>Known misdiagnosis warnings included</li>
+          <li><span class="mark">✓</span>ShopScript ready for you to read at the counter</li>
+        </ul>
+        <div class="demo-verdict">You keep your $1,800</div>
+      </div>
+
     </div>
   </div>
 </section>
@@ -1011,87 +1190,21 @@ Truth · Safety · We Got Your Back
   </div>
 </section>
 
-<!-- ═══ DOCTRINE ═══ -->
-<section>
-  <div class="container">
-    <div class="doctrine">
-      <p class="doctrine-text">
-        If something is <strong>hiding</strong> the truth, we show it.<br>
-        If something is <strong>starting</strong> to fail, we warn you.<br>
-        If something <strong>happened</strong>, we prove it.<br>
-        If something <strong>invented</strong> a problem, we expose it.
-      </p>
-      <div class="doctrine-byline">
-        — The LYLO Mechanic Doctrine
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ LIVE DEMO — THE MECHANIC KILLER ═══ -->
-<section id="demo" class="demo-section">
-  <div class="container">
-    <div class="section-label">The Mechanic Killer</div>
-    <h2 class="section-title">See what LYLO catches that other apps miss.</h2>
-    <p class="section-sub">
-      Here's a real scenario: a mechanic quotes $1,800 for a new catalytic converter
-      on a healthy car. Most drivers have no way to push back. LYLO gives you one.
-    </p>
-
-    <div class="demo-grid">
-
-      <div class="demo-col before">
-        <div class="demo-label">▼ Without LYLO</div>
-        <div class="demo-title">You trust the mechanic</div>
-        <div class="demo-quote">
-          "Your catalytic converter is going bad. It'll be $1,800.
-          We can have you back on the road by Friday."
-        </div>
-        <ul class="demo-evidence">
-          <li><span class="mark">✕</span>No way to verify the diagnosis</li>
-          <li><span class="mark">✕</span>No knowledge of what codes the car actually has</li>
-          <li><span class="mark">✕</span>No idea if $1,800 is fair</li>
-          <li><span class="mark">✕</span>No way to push back without being rude</li>
-        </ul>
-        <div class="demo-verdict">You pay $1,800 and hope for the best</div>
-      </div>
-
-      <div class="demo-col after">
-        <div class="demo-label">▲ With LYLO</div>
-        <div class="demo-title">You check the evidence</div>
-        <div class="demo-quote">
-          <strong>LYLO Quote Auditor:</strong><br>
-          "The data does NOT support this repair. Your scan shows no P0420,
-          no O2 sensor anomaly, fuel trims normal."
-        </div>
-        <ul class="demo-evidence">
-          <li><span class="mark">✓</span>Real OBD evidence cross-referenced</li>
-          <li><span class="mark">✓</span>Typical cost range shown: $400-$2,200</li>
-          <li><span class="mark">✓</span>Known misdiagnosis warnings included</li>
-          <li><span class="mark">✓</span>ShopScript ready for you to read</li>
-        </ul>
-        <div class="demo-verdict">You keep your $1,800</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
 <!-- ═══ HOW IT WORKS ═══ -->
 <section>
   <div class="container">
     <div class="section-label">How It Works</div>
     <h2 class="section-title">From plug-in to protection in under a minute.</h2>
     <p class="section-sub">
-      LYLO works with any Bluetooth OBD-II scanner (we recommend the OBDLink MX+).
-      Plug it into your car, open the app, and the four layers start running automatically.
+      LYLO is currently built for the <strong>OBDLink MX+</strong>.
+      Support for additional OBDLink adapters is coming soon.
     </p>
 
     <div class="steps">
       <div class="step">
         <div class="step-num">01</div>
         <div class="step-title">Plug In</div>
-        <div class="step-desc">Connect a Bluetooth OBD-II scanner under your dash.</div>
+        <div class="step-desc">Plug in an OBDLink MX+ under your dash.</div>
       </div>
       <div class="step">
         <div class="step-num">02</div>
@@ -1108,6 +1221,19 @@ Truth · Safety · We Got Your Back
         <div class="step-title">Get The Truth</div>
         <div class="step-desc">Plain-English report. ShopScript. Real numbers. No guesses.</div>
       </div>
+    </div>
+
+    <!-- ═══ HARDWARE REQUIRED CALLOUT ═══ -->
+    <div class="hardware-block">
+      <div class="hardware-label">Hardware Required</div>
+      <div class="hardware-title">You'll need an OBDLink MX+ to scan your car</div>
+      <p class="hardware-copy">
+        LYLO is currently built for the OBDLink MX+.
+        Support for additional OBDLink adapters is coming soon.
+      </p>
+      <a href="https://www.obdlink.com/products/" target="_blank" rel="noopener" class="btn-primary">
+        Get the OBDLink MX+ →
+      </a>
     </div>
   </div>
 </section>
@@ -1159,6 +1285,59 @@ Truth · Safety · We Got Your Back
         <a href="/api/v1/billing/checkout/pro" class="price-cta">Upgrade to PRO</a>
       </div>
 
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DOWNLOAD APP ═══ -->
+<section id="download" class="download-section">
+  <div class="container">
+    <div class="section-label">Download</div>
+    <h2 class="section-title">Get LYLO Mechanic on your phone.</h2>
+    <p class="section-sub">
+      Install the app, plug in your OBDLink MX+, and start scanning. The four
+      truth layers run on every scan — wherever you are.
+    </p>
+
+    <div class="download-grid">
+
+      <div class="download-card">
+        <img src="/static/lylo_mechanic_logo_.png" alt="LYLO Mechanic" class="download-logo">
+        <div class="download-platform">▼ Android</div>
+        <div class="download-name">LYLO Mechanic for Android</div>
+        <div class="download-sub">Direct APK · OBDLink MX+ Bluetooth supported</div>
+        <a href="/static/lylo-mechanic.apk" class="btn-primary" download>
+          Download APK
+        </a>
+      </div>
+
+      <div class="download-card">
+        <img src="/static/lylo_mechanic_logo_.png" alt="LYLO Mechanic" class="download-logo">
+        <div class="download-platform">▼ iOS</div>
+        <div class="download-name">LYLO Mechanic for iPhone</div>
+        <div class="download-sub">Coming soon to the App Store</div>
+        <a href="#pricing" class="btn-secondary">
+          Notify Me
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DOCTRINE ═══ -->
+<section>
+  <div class="container">
+    <div class="doctrine">
+      <p class="doctrine-text">
+        If something is <strong>hiding</strong> the truth, we show it.<br>
+        If something is <strong>starting</strong> to fail, we warn you.<br>
+        If something <strong>happened</strong>, we prove it.<br>
+        If something <strong>invented</strong> a problem, we expose it.
+      </p>
+      <div class="doctrine-byline">
+        — The LYLO Mechanic Doctrine
+      </div>
     </div>
   </div>
 </section>
@@ -1226,12 +1405,17 @@ Truth · Safety · We Got Your Back
     <h2 class="section-title" style="margin-left: auto; margin-right: auto;">
       Ready to stop getting lied to about your car?
     </h2>
-    <p class="section-sub" style="margin-left: auto; margin-right: auto; margin-bottom: 40px;">
+    <p class="section-sub" style="margin-left: auto; margin-right: auto; margin-bottom: 16px;">
       Start with 5 free scans. Upgrade when you want the full truth stack.
       No credit card required to begin.
     </p>
+    <p class="section-sub" style="margin-left: auto; margin-right: auto; margin-bottom: 40px; font-size: 14px;">
+      LYLO is currently built for the <strong style="color: var(--accent);">OBDLink MX+</strong>.
+      Support for additional OBDLink adapters is coming soon.
+    </p>
     <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-      <a href="/" class="btn-primary">Start Free Scan</a>
+      <a href="#download" class="btn-primary">Download App</a>
+      <a href="https://www.obdlink.com/products/" target="_blank" rel="noopener" class="btn-secondary">Get the OBDLink MX+</a>
       <a href="#pricing" class="btn-secondary">See Pricing →</a>
     </div>
   </div>
