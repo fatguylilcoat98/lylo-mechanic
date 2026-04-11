@@ -7,16 +7,23 @@
  * This client sends raw OBD data and receives a MechanicResponse.
  */
 
-// Default to local development. Change for production.
-const DEFAULT_BASE_URL = 'http://10.0.2.2:5050'; // Android emulator → host machine
+// Production backend on Render
+const DEFAULT_BASE_URL = 'https://lylo-mechanic.onrender.com';
+
+let apiCallCounter = 0;
 
 class ApiClient {
   constructor(baseUrl = DEFAULT_BASE_URL) {
     this._baseUrl = baseUrl;
+    this._instanceId = Date.now();
   }
 
   set baseUrl(url) {
     this._baseUrl = url;
+  }
+
+  _logState(label) {
+    console.log(`[API ${label}] instanceId=${this._instanceId} baseUrl=${this._baseUrl}`);
   }
 
   /**
@@ -91,32 +98,223 @@ class ApiClient {
    * @returns {object} {input, input_type, results: [{code, whats_wrong, urgency, cost, difficulty, shop_script, red_flags}]}
    */
   async quickCheck(input) {
-    const resp = await fetch(`${this._baseUrl}/api/v1/quick/check`, {
+    apiCallCounter++;
+    const callId = apiCallCounter;
+    const tag = `[API #${callId}]`;
+
+    this._logState(tag);
+
+    const url = `${this._baseUrl}/api/v1/quick/check`;
+    const requestBody = JSON.stringify({input});
+
+    console.log(tag, '===== REQUEST =====');
+    console.log(tag, 'URL:', url);
+    console.log(tag, 'Method: POST');
+    console.log(tag, 'Body:', requestBody);
+    console.log(tag, 'Body length:', requestBody.length);
+    console.log(tag, 'Input type:', typeof input);
+    console.log(tag, 'Input value:', JSON.stringify(input));
+
+    let resp;
+    const fetchOpts = {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({input}),
-    });
+      body: requestBody,
+      signal: AbortSignal.timeout(30000), // 30s timeout — prevents hanging on stale connections
+    };
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`Quick check failed (${resp.status}): ${text}`);
+    try {
+      const fetchStart = Date.now();
+      resp = await fetch(url, fetchOpts);
+      const fetchDuration = Date.now() - fetchStart;
+
+      console.log(tag, '===== RESPONSE =====');
+      console.log(tag, 'Status:', resp.status, resp.statusText);
+      console.log(tag, 'OK:', resp.ok);
+      console.log(tag, 'Duration:', fetchDuration, 'ms');
+      console.log(tag, 'Response type:', resp.type);
+      console.log(tag, 'Response URL:', resp.url);
+      console.log(tag, 'Headers:', JSON.stringify(Object.fromEntries(resp.headers?.entries?.() || [])));
+    } catch (networkErr) {
+      // Stale keep-alive connection — retry once with a fresh socket
+      const isNetworkFail = networkErr.message?.includes('Network request failed')
+        || networkErr.name === 'TimeoutError'
+        || networkErr.name === 'AbortError';
+      if (isNetworkFail) {
+        console.warn(tag, `First attempt failed (${networkErr.message}), retrying once...`);
+        try {
+          const retryStart = Date.now();
+          resp = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: requestBody,
+            signal: AbortSignal.timeout(30000),
+          });
+          const retryDuration = Date.now() - retryStart;
+          console.log(tag, `Retry succeeded in ${retryDuration}ms`);
+        } catch (retryErr) {
+          console.error(tag, '===== RETRY ALSO FAILED =====');
+          console.error(tag, 'error.name:', retryErr.name);
+          console.error(tag, 'error.message:', retryErr.message);
+          console.error(tag, 'error.stack:', retryErr.stack);
+          console.error(tag, 'Full error:', JSON.stringify(retryErr, Object.getOwnPropertyNames(retryErr)));
+          console.error(tag, 'Request was:', requestBody);
+
+          retryErr._lyloDebug = {
+            callId,
+            url,
+            requestBody,
+            phase: 'fetch_retry_threw',
+            instanceId: this._instanceId,
+          };
+          throw retryErr;
+        }
+      } else {
+        // Non-network error — don't retry
+        console.error(tag, '===== FETCH THREW (no HTTP response) =====');
+        console.error(tag, 'error.name:', networkErr.name);
+        console.error(tag, 'error.message:', networkErr.message);
+        console.error(tag, 'error.code:', networkErr.code);
+        console.error(tag, 'error.type:', networkErr.type);
+        console.error(tag, 'error.cause:', networkErr.cause);
+        console.error(tag, 'error.stack:', networkErr.stack);
+        console.error(tag, 'Full error:', JSON.stringify(networkErr, Object.getOwnPropertyNames(networkErr)));
+        console.error(tag, 'Request was:', requestBody);
+
+        networkErr._lyloDebug = {
+          callId,
+          url,
+          requestBody,
+          phase: 'fetch_threw',
+          instanceId: this._instanceId,
+        };
+        throw networkErr;
+      }
     }
 
-    return resp.json();
+    // We got an HTTP response — read the body
+    let responseText;
+    try {
+      responseText = await resp.text();
+      console.log(tag, 'Response body:', responseText.slice(0, 1000));
+    } catch (bodyErr) {
+      console.error(tag, 'Failed to read response body:', bodyErr.message);
+      responseText = `(body unreadable: ${bodyErr.message})`;
+    }
+
+    if (!resp.ok) {
+      console.error(tag, '===== HTTP ERROR =====');
+      console.error(tag, 'Status:', resp.status, resp.statusText);
+      console.error(tag, 'Body:', responseText.slice(0, 500));
+      console.error(tag, 'Request was:', requestBody);
+
+      const err = new Error(`Quick check failed (${resp.status}): ${responseText}`);
+      err._lyloDebug = {
+        callId,
+        url,
+        requestBody,
+        status: resp.status,
+        statusText: resp.statusText,
+        responseBody: responseText,
+        phase: 'http_error',
+        instanceId: this._instanceId,
+      };
+      throw err;
+    }
+
+    // Parse JSON from the already-read text
+    try {
+      const parsed = JSON.parse(responseText);
+      console.log(tag, 'Parsed OK — keys:', Object.keys(parsed));
+      return parsed;
+    } catch (jsonErr) {
+      console.error(tag, '===== JSON PARSE FAILED =====');
+      console.error(tag, 'Raw text:', responseText.slice(0, 500));
+      jsonErr._lyloDebug = {callId, url, requestBody, responseBody: responseText, phase: 'json_parse'};
+      throw jsonErr;
+    }
   }
 
   /**
-   * Quick Check from OBD scan data — extracts DTCs from a fullScan() result
-   * and sends them through the quick-check MVP endpoint.
+   * Unified Analysis — single endpoint for ALL diagnostics.
+   *
+   * OBD and manual input both go through /api/v1/analyze.
+   * Backend handles: check gating, plan filtering, rate limiting.
+   * OBD is just an input method — the product is the backend.
+   *
+   * @param {object} params - { source, codes, input, vehicle, user_id }
+   * @returns {object} Diagnostic result (filtered by plan)
+   */
+  async analyze(params) {
+    apiCallCounter++;
+    const callId = apiCallCounter;
+    const tag = `[API ANALYZE #${callId}]`;
+
+    const url = `${this._baseUrl}/api/v1/analyze`;
+    const requestBody = JSON.stringify(params);
+
+    console.log(tag, 'URL:', url);
+    console.log(tag, 'Source:', params.source);
+    console.log(tag, 'Body:', requestBody.slice(0, 300));
+
+    let resp;
+    const fetchOpts = {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: requestBody,
+      signal: AbortSignal.timeout(30000),
+    };
+
+    try {
+      resp = await fetch(url, fetchOpts);
+    } catch (networkErr) {
+      // Retry once on network failure (stale connection fix)
+      const isNetworkFail = networkErr.message?.includes('Network request failed')
+        || networkErr.name === 'TimeoutError';
+      if (isNetworkFail) {
+        console.warn(tag, 'Retrying analyze...');
+        resp = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: requestBody,
+          signal: AbortSignal.timeout(30000),
+        });
+      } else {
+        throw networkErr;
+      }
+    }
+
+    const responseText = await resp.text();
+
+    if (!resp.ok) {
+      // 403 = check limit reached, 429 = rate limited
+      if (resp.status === 403 || resp.status === 429) {
+        return JSON.parse(responseText); // Return gate/limit response to UI
+      }
+      throw new Error(`Analyze failed (${resp.status}): ${responseText}`);
+    }
+
+    return JSON.parse(responseText);
+  }
+
+  /**
+   * Analyze from OBD scan data — sends codes through unified endpoint.
+   * OBD is the data collector. Backend is the brain.
    *
    * @param {object} scanData - Result from OBDService.fullScan()
-   * @returns {object} Quick check results with ShopScript
+   * @param {object} vehicle  - Optional vehicle info {year, make, model}
+   * @returns {object} Diagnostic result (filtered by plan)
    */
-  async quickCheckFromScan(scanData) {
-    const dtcCodes = (scanData.raw_dtcs || []).map(d => d.code).filter(Boolean);
+  async quickCheckFromScan(scanData, vehicle = null) {
+    const tag = `[API quickCheckFromScan]`;
+    console.log(tag, 'raw_dtcs:', JSON.stringify(scanData?.raw_dtcs));
+
+    const dtcCodes = (scanData?.raw_dtcs || []).map(d => d?.code).filter(Boolean);
+    console.log(tag, 'Extracted DTC codes:', JSON.stringify(dtcCodes));
 
     if (dtcCodes.length === 0) {
-      // No codes found — return a helpful "clean" result
+      // No codes found — return helpful "clean" result locally
+      // (doesn't cost a check — no backend call needed)
       return {
         input: 'OBD Scan (no codes)',
         input_type: 'obd_scan',
@@ -147,9 +345,13 @@ class ApiClient {
       };
     }
 
-    // Send all DTCs as a single input string
-    const input = dtcCodes.join(' ');
-    return this.quickCheck(input);
+    // Send through unified analyze endpoint — backend handles everything
+    return this.analyze({
+      source: 'obd',
+      codes: dtcCodes,
+      raw_dtcs: scanData?.raw_dtcs,
+      vehicle: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`.trim() : undefined,
+    });
   }
 
   /**

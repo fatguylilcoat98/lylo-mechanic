@@ -398,15 +398,40 @@ DEMOS = {
 @quick_check_bp.route("/check", methods=["POST"])
 def quick_check():
     """
-    Main MVP endpoint.
-    Accepts: {"input": "P0420"} or {"input": "check engine light, rough idle"}
-    Returns: full diagnostic result with ShopScript.
+    Main MVP endpoint — gated by plan and check limits.
+    Accepts: {"input": "P0420", "user_id": "optional"}
+    Returns: full or basic diagnostic result based on plan.
     """
+    from models.user import can_run_check, filter_result_by_plan, check_rate_limit, log_event
+
     data = request.get_json(force=True)
     user_input = data.get("input", "").strip()
+    user_id = data.get("user_id", request.remote_addr)
 
     if not user_input:
         return jsonify({"error": "Please describe what's going on with your car."}), 400
+
+    # Rate limit check
+    if not check_rate_limit(request.remote_addr):
+        return jsonify({
+            "error": "Too many requests. Please wait 20 seconds between checks.",
+            "rate_limited": True,
+        }), 429
+
+    # Check gate — deducts a check or blocks
+    gate = can_run_check(user_id)
+    if not gate["allowed"]:
+        log_event("check_blocked", user_id, {"reason": "no_checks_remaining"})
+        return jsonify({
+            "status": "locked",
+            "message": gate["message"],
+            "upgrade_required": gate.get("upgrade_required", False),
+            "addon_available": gate.get("addon_available", False),
+            "checks_remaining": 0,
+            "upgrade_url": "/api/v1/billing/upgrade",
+        }), 403
+
+    log_event("check_used", user_id)
 
     _load_data()
 
@@ -415,33 +440,33 @@ def quick_check():
         code = user_input.upper()
         result = _build_result_for_code(code)
         results = _enhance_with_claspion_verification([result], user_input)
-        return jsonify({
-            "input": user_input,
-            "input_type": "dtc_code",
-            "results": results
-        })
+        raw = {"input": user_input, "input_type": "dtc_code", "results": results}
+        filtered = filter_result_by_plan(raw, gate["plan"])
+        filtered["checks_remaining"] = gate["checks_remaining"]
+        return jsonify(filtered)
 
     # Strategy 2: Extract codes from text
     extracted = _extract_codes(user_input)
     if extracted:
         results = [_build_result_for_code(c) for c in extracted[:3]]
         results = _enhance_with_claspion_verification(results, user_input)
-        return jsonify({
-            "input": user_input,
-            "input_type": "codes_in_text",
-            "results": results
-        })
+        raw = {"input": user_input, "input_type": "codes_in_text", "results": results}
+        filtered = filter_result_by_plan(raw, gate["plan"])
+        filtered["checks_remaining"] = gate["checks_remaining"]
+        return jsonify(filtered)
 
     # Strategy 3: Symptom matching
     matched_codes = _match_symptoms(user_input)
     results = [_build_result_for_code(c) for c in matched_codes[:2]]
     results = _enhance_with_claspion_verification(results, user_input)
-    return jsonify({
-        "input": user_input,
-        "input_type": "symptoms",
+    raw = {
+        "input": user_input, "input_type": "symptoms",
         "note": "Based on your description, here are the most likely issues:",
-        "results": results
-    })
+        "results": results,
+    }
+    filtered = filter_result_by_plan(raw, gate["plan"])
+    filtered["checks_remaining"] = gate["checks_remaining"]
+    return jsonify(filtered)
 
 
 @quick_check_bp.route("/demos", methods=["GET"])
