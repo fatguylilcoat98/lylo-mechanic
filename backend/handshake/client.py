@@ -16,7 +16,70 @@ Modes returned:
 import requests
 
 HANDSHAKE_URL = "https://the-handshake.onrender.com"
+CLASPION_URL = "https://the-handshake.onrender.com/claspion/decision"
 TIMEOUT_SECONDS = 10
+
+
+def classify_with_claspion(question: str, session_id: str = "") -> dict:
+    """
+    Send a question to CLASPION for enhanced security classification.
+    Returns enhanced verification result with audit trail.
+    """
+    try:
+        resp = requests.post(
+            CLASPION_URL,
+            json={
+                "input": question,
+                "session_id": session_id,
+                "action_context": "lylo_diagnosis_verification"
+            },
+            timeout=TIMEOUT_SECONDS,
+            headers={"Content-Type": "application/json"}
+        )
+
+        if resp.status_code == 200:
+            data = resp.json()
+
+            # Convert CLASPION response to Handshake-compatible format
+            decision = data.get('decision', 'UNKNOWN')
+            is_blocked = decision == 'BLOCKED'
+
+            # Map CLASPION decision to friction levels
+            if is_blocked:
+                friction_level = "HARD_STOP"
+            else:
+                # Use risk score to determine friction level
+                risk_score = 0.0
+                if 'layer_trail' in data:
+                    for layer in data['layer_trail']:
+                        if layer.get('layer') == 'SEMANTIC_CLASSIFIER':
+                            risk_score = layer.get('combined_risk_score', 0.0)
+                            break
+
+                if risk_score > 0.7:
+                    friction_level = "FULL_CHECK"
+                elif risk_score > 0.3:
+                    friction_level = "SOFT_WARNING"
+                else:
+                    friction_level = "LOW_FRICTION"
+
+            return {
+                "mode": friction_level,
+                "confidence": data.get('confidence', 0.9),
+                "reason": data.get('reason', ''),
+                "claspion_enhanced": True,
+                "claspion_data": data,
+                "layers_checked": len(data.get('layer_trail', [])),
+                "audit_trail": data.get('layer_trail', [])
+            }
+        else:
+            # Fallback to original handshake if CLASPION fails
+            return classify(question, session_id)
+
+    except Exception as e:
+        print(f"CLASPION classification failed: {e}")
+        # Fallback to original handshake
+        return classify(question, session_id)
 
 
 def classify(question: str, session_id: str = "") -> dict:

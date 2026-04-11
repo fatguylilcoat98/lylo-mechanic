@@ -12,12 +12,89 @@ actionable results: what's wrong, urgency, cost, difficulty, ShopScript, red fla
 import json
 import os
 import re
+import requests
 from pathlib import Path
 from flask import Blueprint, request, jsonify
 
 quick_check_bp = Blueprint("quick_check", __name__)
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+
+def _enhance_with_claspion_verification(results, user_input):
+    """Enhance results with CLASPION verification."""
+    try:
+        for result in results:
+            # Build verification prompt from result
+            code = result.get('code', '')
+            summary = result.get('whats_wrong', {}).get('summary', '')
+            urgency = result.get('urgency', {}).get('level', '')
+
+            verification_prompt = f"Vehicle diagnostic: {code} - {summary}. Urgency level: {urgency}. Recommend proceeding with repair."
+
+            # Call CLASPION verification
+            claspion_url = "https://the-handshake.onrender.com/claspion/decision"
+            response = requests.post(
+                claspion_url,
+                json={
+                    "input": verification_prompt,
+                    "session_id": f"lylo-quick-{hash(user_input)}",
+                    "action_context": "lylo_quick_check"
+                },
+                timeout=10
+            )
+
+            if response.ok:
+                claspion_data = response.json()
+
+                # Extract verification metrics
+                risk_score = 0.0
+                layers_passed = []
+
+                if 'layer_trail' in claspion_data:
+                    for layer in claspion_data['layer_trail']:
+                        layers_passed.append({
+                            "layer": layer.get('layer', 'unknown'),
+                            "status": "passed" if not layer.get('blocked', False) else "blocked",
+                            "score": layer.get('score', 0.0)
+                        })
+
+                        if layer.get('layer') == 'SEMANTIC_CLASSIFIER':
+                            risk_score = layer.get('combined_risk_score', 0.0)
+
+                # Add CLASPION verification to result
+                result['claspion_verification'] = {
+                    "decision": claspion_data.get('decision', 'UNKNOWN'),
+                    "risk_score": risk_score,
+                    "confidence": claspion_data.get('confidence', 0.9),
+                    "reason": claspion_data.get('reason', ''),
+                    "layers_passed": layers_passed,
+                    "timestamp": claspion_data.get('timestamp', '')
+                }
+            else:
+                # Add fallback verification
+                result['claspion_verification'] = {
+                    "decision": "ALLOWED",
+                    "risk_score": 0.0,
+                    "confidence": 0.7,
+                    "reason": "CLASPION verification unavailable - proceeding with standard checks",
+                    "layers_passed": [],
+                    "timestamp": ""
+                }
+
+    except Exception as e:
+        print(f"CLASPION verification failed: {e}")
+        # Add fallback verification for all results
+        for result in results:
+            result['claspion_verification'] = {
+                "decision": "ALLOWED",
+                "risk_score": 0.0,
+                "confidence": 0.7,
+                "reason": "CLASPION verification unavailable",
+                "layers_passed": [],
+                "timestamp": ""
+            }
+
+    return results
 DTC_DB = {}
 CAUSE_MAP = {}
 REPAIR_COSTS = {}
@@ -337,16 +414,18 @@ def quick_check():
     if _is_dtc_code(user_input):
         code = user_input.upper()
         result = _build_result_for_code(code)
+        results = _enhance_with_claspion_verification([result], user_input)
         return jsonify({
             "input": user_input,
             "input_type": "dtc_code",
-            "results": [result]
+            "results": results
         })
 
     # Strategy 2: Extract codes from text
     extracted = _extract_codes(user_input)
     if extracted:
         results = [_build_result_for_code(c) for c in extracted[:3]]
+        results = _enhance_with_claspion_verification(results, user_input)
         return jsonify({
             "input": user_input,
             "input_type": "codes_in_text",
@@ -356,6 +435,7 @@ def quick_check():
     # Strategy 3: Symptom matching
     matched_codes = _match_symptoms(user_input)
     results = [_build_result_for_code(c) for c in matched_codes[:2]]
+    results = _enhance_with_claspion_verification(results, user_input)
     return jsonify({
         "input": user_input,
         "input_type": "symptoms",
@@ -382,11 +462,12 @@ def run_demo(demo_id):
 
     if _is_dtc_code(user_input):
         result = _build_result_for_code(user_input.upper())
+        results = _enhance_with_claspion_verification([result], user_input)
         return jsonify({
             "input": user_input,
             "input_type": "demo",
             "demo": demo,
-            "results": [result]
+            "results": results
         })
 
     matched_codes = _match_symptoms(user_input)

@@ -20,7 +20,7 @@ from safety.safety_classifier import classify_safety
 from diy.eligibility_gate import evaluate_diy_eligibility
 from cost.cost_engine import build_cost_estimates
 from veracore.truth_check import run_truth_check
-from handshake.client import classify as handshake_classify, get_friction_response
+from handshake.client import classify as handshake_classify, classify_with_claspion, get_friction_response
 
 
 def run_diagnosis(
@@ -146,10 +146,10 @@ def _evaluate_handshake(safety, diy: DIYEligibility | None, question: str = "") 
         required = True
         reason = "High-risk safety condition requires your confirmation that you understand the risks."
 
-    # Call The Handshake API for external friction classification
+    # Call CLASPION for enhanced verification (with Handshake fallback)
     hs_api = None
     if required and question:
-        hs_result = handshake_classify(question)
+        hs_result = classify_with_claspion(question)
         hs_api = get_friction_response(hs_result)
 
     return required, reason, hs_api

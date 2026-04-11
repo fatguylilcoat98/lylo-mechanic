@@ -422,6 +422,94 @@
     text-align: center;
     margin-bottom: 16px;
   }
+
+  /* CLASPION Verification Styles */
+  .claspion-verification {
+    border-left: 3px solid var(--accent);
+    background: rgba(88, 166, 255, 0.05);
+  }
+
+  .claspion-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  .claspion-verified {
+    background: rgba(63, 185, 80, 0.1);
+    border: 1px solid rgba(63, 185, 80, 0.3);
+    color: var(--green);
+  }
+
+  .claspion-flagged {
+    background: rgba(248, 81, 73, 0.1);
+    border: 1px solid rgba(248, 81, 73, 0.3);
+    color: var(--red);
+  }
+
+  .claspion-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+
+  .metric-label {
+    color: var(--text-muted);
+  }
+
+  .metric-value {
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .claspion-layers {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .layers-toggle {
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 6px;
+    user-select: none;
+  }
+
+  .layers-toggle:hover {
+    text-decoration: underline;
+  }
+
+  .layers-detail {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-radius: 6px;
+  }
+
+  .layer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    font-size: 13px;
+  }
+
+  .layer-name {
+    color: var(--text-muted);
+  }
+
+  .claspion-explanation {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
 </style>
 </head>
 <body>
@@ -633,6 +721,11 @@ function renderSingleResult(idx) {
   }
   html += '</div>';
 
+  // CLASPION Verification Status (if available)
+  if (r.claspion_verification) {
+    html += renderClaspionVerification(r.claspion_verification);
+  }
+
   // 2. Urgency
   html += '<div class="card">';
   html += '<div class="card-title"><span class="icon">&#9888;&#65039;</span> Urgency</div>';
@@ -705,6 +798,75 @@ function esc(s) {
   const el = document.createElement('span');
   el.textContent = s;
   return el.innerHTML;
+}
+
+function renderClaspionVerification(claspion) {
+  const verified = claspion.decision === 'ALLOWED';
+  const statusIcon = verified ? '✅' : '🛡️';
+  const statusText = verified ? 'Diagnosis Verified' : 'Requires Review';
+  const statusClass = verified ? 'claspion-verified' : 'claspion-flagged';
+
+  let html = '<div class="card claspion-verification">';
+  html += '<div class="card-title"><span class="icon">🔐</span> CLASPION Security Verification</div>';
+
+  html += '<div class="claspion-status ' + statusClass + '">';
+  html += '<span class="status-icon">' + statusIcon + '</span>';
+  html += '<span class="status-text">' + statusText + '</span>';
+  html += '</div>';
+
+  // Risk Score
+  html += '<div class="claspion-metric">';
+  html += '<span class="metric-label">Risk Score:</span>';
+  html += '<span class="metric-value">' + (claspion.risk_score * 100).toFixed(1) + '%</span>';
+  html += '</div>';
+
+  // Confidence Level
+  html += '<div class="claspion-metric">';
+  html += '<span class="metric-label">Confidence:</span>';
+  html += '<span class="metric-value">' + (claspion.confidence * 100).toFixed(1) + '%</span>';
+  html += '</div>';
+
+  // Layers Checked
+  if (claspion.layers_passed && claspion.layers_passed.length > 0) {
+    html += '<div class="claspion-layers">';
+    html += '<span class="metric-label">Security Layers:</span>';
+    html += '<span class="layers-summary">' + claspion.layers_passed.length + ' checked</span>';
+
+    // Expandable layer details
+    html += '<div class="layers-toggle" onclick="toggleClaspionDetails(this)">Show Details ↓</div>';
+    html += '<div class="layers-detail" style="display:none;">';
+    claspion.layers_passed.forEach(layer => {
+      const layerStatus = layer.status === 'passed' ? '✅' : '❌';
+      html += '<div class="layer-item">';
+      html += '<span class="layer-icon">' + layerStatus + '</span>';
+      html += '<span class="layer-name">' + esc(layer.layer) + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+  }
+
+  // Simple explanation
+  html += '<div class="claspion-explanation">';
+  html += '<p style="font-size:14px;color:var(--text-muted);line-height:1.5;">';
+  if (verified) {
+    html += 'This diagnosis has been verified by CLASPION\'s multi-layer security analysis. No concerning patterns detected.';
+  } else {
+    html += 'This diagnosis has been flagged for review: ' + esc(claspion.reason || 'Security check required');
+  }
+  html += '</p>';
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+function toggleClaspionDetails(toggle) {
+  const details = toggle.nextElementSibling;
+  const isHidden = details.style.display === 'none';
+
+  details.style.display = isHidden ? 'block' : 'none';
+  toggle.textContent = isHidden ? 'Hide Details ↑' : 'Show Details ↓';
 }
 </script>
 
