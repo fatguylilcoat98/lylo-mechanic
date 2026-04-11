@@ -12,7 +12,6 @@ actionable results: what's wrong, urgency, cost, difficulty, ShopScript, red fla
 import json
 import os
 import re
-import requests
 from pathlib import Path
 from flask import Blueprint, request, jsonify
 
@@ -21,8 +20,11 @@ quick_check_bp = Blueprint("quick_check", __name__)
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 def _enhance_with_claspion_verification(results, user_input):
-    """Enhance results with CLASPION verification."""
+    """Enhance results with local CLASPION verification."""
     try:
+        # Import local CLASPION
+        from claspion import evaluate
+
         for result in results:
             # Build verification prompt from result
             code = result.get('code', '')
@@ -31,58 +33,37 @@ def _enhance_with_claspion_verification(results, user_input):
 
             verification_prompt = f"Vehicle diagnostic: {code} - {summary}. Urgency level: {urgency}. Recommend proceeding with repair."
 
-            # Call CLASPION verification
-            claspion_url = "https://the-handshake.onrender.com/claspion/decision"
-            response = requests.post(
-                claspion_url,
-                json={
-                    "input": verification_prompt,
-                    "session_id": f"lylo-quick-{hash(user_input)}",
-                    "action_context": "lylo_quick_check"
-                },
-                timeout=10
-            )
+            # Run local CLASPION verification
+            decision = evaluate(verification_prompt, session_id=f"lylo-quick-{hash(user_input)}")
 
-            if response.ok:
-                claspion_data = response.json()
+            # Extract verification metrics
+            risk_score = 0.0
+            layers_passed = []
 
-                # Extract verification metrics
-                risk_score = 0.0
-                layers_passed = []
+            if hasattr(decision, 'layer_trail') and decision.layer_trail:
+                for layer in decision.layer_trail:
+                    layers_passed.append({
+                        "layer": layer.get('layer', 'unknown'),
+                        "status": "passed" if not layer.get('blocked', False) else "blocked",
+                        "score": layer.get('score', 0.0)
+                    })
 
-                if 'layer_trail' in claspion_data:
-                    for layer in claspion_data['layer_trail']:
-                        layers_passed.append({
-                            "layer": layer.get('layer', 'unknown'),
-                            "status": "passed" if not layer.get('blocked', False) else "blocked",
-                            "score": layer.get('score', 0.0)
-                        })
+                    if layer.get('layer') == 'SEMANTIC_CLASSIFIER':
+                        risk_score = layer.get('combined_risk_score', 0.0)
 
-                        if layer.get('layer') == 'SEMANTIC_CLASSIFIER':
-                            risk_score = layer.get('combined_risk_score', 0.0)
-
-                # Add CLASPION verification to result
-                result['claspion_verification'] = {
-                    "decision": claspion_data.get('decision', 'UNKNOWN'),
-                    "risk_score": risk_score,
-                    "confidence": claspion_data.get('confidence', 0.9),
-                    "reason": claspion_data.get('reason', ''),
-                    "layers_passed": layers_passed,
-                    "timestamp": claspion_data.get('timestamp', '')
-                }
-            else:
-                # Add fallback verification
-                result['claspion_verification'] = {
-                    "decision": "ALLOWED",
-                    "risk_score": 0.0,
-                    "confidence": 0.7,
-                    "reason": "CLASPION verification unavailable - proceeding with standard checks",
-                    "layers_passed": [],
-                    "timestamp": ""
-                }
+            # Add CLASPION verification to result
+            result['claspion_verification'] = {
+                "decision": decision.decision,
+                "risk_score": risk_score,
+                "confidence": getattr(decision, 'confidence', 0.9),
+                "reason": decision.reason or '',
+                "layers_passed": layers_passed,
+                "timestamp": decision.timestamp,
+                "local_claspion": True
+            }
 
     except Exception as e:
-        print(f"CLASPION verification failed: {e}")
+        print(f"Local CLASPION verification failed: {e}")
         # Add fallback verification for all results
         for result in results:
             result['claspion_verification'] = {
@@ -91,7 +72,8 @@ def _enhance_with_claspion_verification(results, user_input):
                 "confidence": 0.7,
                 "reason": "CLASPION verification unavailable",
                 "layers_passed": [],
-                "timestamp": ""
+                "timestamp": "",
+                "local_claspion": False
             }
 
     return results

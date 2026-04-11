@@ -22,62 +22,51 @@ TIMEOUT_SECONDS = 10
 
 def classify_with_claspion(question: str, session_id: str = "") -> dict:
     """
-    Send a question to CLASPION for enhanced security classification.
+    Use local CLASPION for enhanced security classification.
     Returns enhanced verification result with audit trail.
     """
     try:
-        resp = requests.post(
-            CLASPION_URL,
-            json={
-                "input": question,
-                "session_id": session_id,
-                "action_context": "lylo_diagnosis_verification"
-            },
-            timeout=TIMEOUT_SECONDS,
-            headers={"Content-Type": "application/json"}
-        )
+        # Import local CLASPION
+        from claspion import evaluate
 
-        if resp.status_code == 200:
-            data = resp.json()
+        # Run local CLASPION evaluation
+        decision = evaluate(question, session_id=session_id)
 
-            # Convert CLASPION response to Handshake-compatible format
-            decision = data.get('decision', 'UNKNOWN')
-            is_blocked = decision == 'BLOCKED'
+        # Convert CLASPION decision to Handshake-compatible format
+        is_blocked = decision.decision == 'BLOCKED'
 
-            # Map CLASPION decision to friction levels
-            if is_blocked:
-                friction_level = "HARD_STOP"
-            else:
-                # Use risk score to determine friction level
-                risk_score = 0.0
-                if 'layer_trail' in data:
-                    for layer in data['layer_trail']:
-                        if layer.get('layer') == 'SEMANTIC_CLASSIFIER':
-                            risk_score = layer.get('combined_risk_score', 0.0)
-                            break
-
-                if risk_score > 0.7:
-                    friction_level = "FULL_CHECK"
-                elif risk_score > 0.3:
-                    friction_level = "SOFT_WARNING"
-                else:
-                    friction_level = "LOW_FRICTION"
-
-            return {
-                "mode": friction_level,
-                "confidence": data.get('confidence', 0.9),
-                "reason": data.get('reason', ''),
-                "claspion_enhanced": True,
-                "claspion_data": data,
-                "layers_checked": len(data.get('layer_trail', [])),
-                "audit_trail": data.get('layer_trail', [])
-            }
+        # Map CLASPION decision to friction levels
+        if is_blocked:
+            friction_level = "HARD_STOP"
         else:
-            # Fallback to original handshake if CLASPION fails
-            return classify(question, session_id)
+            # Use risk score to determine friction level
+            risk_score = 0.0
+            if hasattr(decision, 'layer_trail'):
+                for layer in decision.layer_trail:
+                    if layer.get('layer') == 'SEMANTIC_CLASSIFIER':
+                        risk_score = layer.get('combined_risk_score', 0.0)
+                        break
+
+            if risk_score > 0.7:
+                friction_level = "FULL_CHECK"
+            elif risk_score > 0.3:
+                friction_level = "SOFT_WARNING"
+            else:
+                friction_level = "LOW_FRICTION"
+
+        return {
+            "mode": friction_level,
+            "confidence": getattr(decision, 'confidence', 0.9),
+            "reason": decision.reason or '',
+            "claspion_enhanced": True,
+            "claspion_local": True,
+            "layers_checked": len(getattr(decision, 'layer_trail', [])),
+            "audit_trail": getattr(decision, 'layer_trail', []),
+            "decision_object": decision
+        }
 
     except Exception as e:
-        print(f"CLASPION classification failed: {e}")
+        print(f"Local CLASPION classification failed: {e}")
         # Fallback to original handshake
         return classify(question, session_id)
 
