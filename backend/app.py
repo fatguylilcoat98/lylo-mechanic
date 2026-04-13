@@ -5,6 +5,16 @@ AI Collaborators: Claude · GPT · Gemini · Groq
 Truth · Safety · We Got Your Back
 """
 
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
+    force=True,
+)
+
 from flask import Flask
 from flask_cors import CORS
 from api.routes.session import session_bp
