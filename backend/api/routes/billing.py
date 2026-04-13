@@ -7,11 +7,12 @@ Stripe integration for PRO subscriptions and add-on check packs.
 """
 
 import os
-from flask import Blueprint, request, jsonify, redirect
+from flask import Blueprint, request, jsonify, redirect, g
 from models.user import (
     get_user_status, upgrade_user, add_checks, log_event,
     get_analytics_summary, PLANS, ADDON_CHECKS, ADDON_PRICE,
 )
+from auth import require_auth
 
 billing_bp = Blueprint("billing", __name__)
 
@@ -126,10 +127,10 @@ def stripe_webhook():
 # ── User Status ───────────────────────────────────────────────────────────
 
 @billing_bp.route("/status", methods=["GET"])
+@require_auth
 def user_status():
     """Get current user's plan and check status."""
-    user_id = request.args.get("user_id", request.remote_addr)
-    return jsonify(get_user_status(user_id))
+    return jsonify(get_user_status(g.user_id))
 
 
 # ── Analytics (Admin) ─────────────────────────────────────────────────────
@@ -143,6 +144,7 @@ def analytics():
 # ── Upgrade Screen Data ───────────────────────────────────────────────────
 
 @billing_bp.route("/upgrade", methods=["GET"])
+@require_auth
 def upgrade_screen():
     """Return upgrade screen content for the mobile app."""
     return jsonify({

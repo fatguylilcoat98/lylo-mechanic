@@ -13,7 +13,9 @@ import json
 import os
 import re
 from pathlib import Path
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
+
+from auth import require_auth
 
 quick_check_bp = Blueprint("quick_check", __name__)
 
@@ -378,17 +380,18 @@ DEMOS = {
 
 
 @quick_check_bp.route("/check", methods=["POST"])
+@require_auth
 def quick_check():
     """
     Main MVP endpoint — gated by plan and check limits.
-    Accepts: {"input": "P0420", "user_id": "optional"}
+    Accepts: {"input": "P0420"}
     Returns: full or basic diagnostic result based on plan.
     """
     from models.user import can_run_check, filter_result_by_plan, check_rate_limit, log_event
 
     data = request.get_json(force=True)
     user_input = data.get("input", "").strip()
-    user_id = data.get("user_id", request.remote_addr)
+    user_id = g.user_id
 
     if not user_input:
         return jsonify({"error": "Please describe what's going on with your car."}), 400
@@ -452,12 +455,14 @@ def quick_check():
 
 
 @quick_check_bp.route("/demos", methods=["GET"])
+@require_auth
 def get_demos():
     """Return available demo scenarios."""
     return jsonify({"demos": list(DEMOS.values())})
 
 
 @quick_check_bp.route("/demo/<demo_id>", methods=["GET"])
+@require_auth
 def run_demo(demo_id):
     """Run a preloaded demo scenario."""
     demo = DEMOS.get(demo_id.lower())

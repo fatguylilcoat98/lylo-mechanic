@@ -18,7 +18,7 @@ ONE endpoint. TWO entry points. ZERO bypasses.
 import re
 import logging
 import traceback
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from models.user import (
     can_run_check, filter_result_by_plan, check_rate_limit, log_event,
     get_user_status,
@@ -27,6 +27,7 @@ from api.routes.quick_check import (
     _load_data, _is_dtc_code, _extract_codes, _match_symptoms,
     _build_result_for_code,
 )
+from auth import require_auth
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ analyze_bp = Blueprint("analyze", __name__)
 
 
 @analyze_bp.route("", methods=["POST"])
+@require_auth
 def analyze():
     """
     Unified analysis endpoint — single brain, multiple inputs.
@@ -68,8 +70,8 @@ def analyze():
         logger.info(f"Request data: {data}")
 
         source = data.get("source", "manual")
-        user_id = data.get("user_id", request.remote_addr)
-        logger.info(f"source={source} user_id={user_id} remote_addr={request.remote_addr}")
+        user_id = g.user_id
+        logger.info(f"source={source} user_id={user_id} email={g.user_email}")
 
         # ── Rate limit ────────────────────────────────────────────────────
         logger.info("Step: rate limit check")
@@ -189,7 +191,7 @@ def analyze():
 
 
 @analyze_bp.route("/status", methods=["GET"])
+@require_auth
 def analyze_status():
     """Quick check: how many checks does this user have left?"""
-    user_id = request.args.get("user_id", request.remote_addr)
-    return jsonify(get_user_status(user_id))
+    return jsonify(get_user_status(g.user_id))

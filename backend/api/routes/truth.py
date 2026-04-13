@@ -20,6 +20,7 @@ from truth_detector import analyze_truth, truth_report_to_dict
 from failure_predictor import analyze_health, health_report_to_dict
 from event_blackbox import BlackBox
 from quote_auditor import audit_quote, audit_result_to_dict
+from auth import require_auth
 
 
 truth_bp = Blueprint("truth", __name__)
@@ -33,6 +34,7 @@ _blackbox = BlackBox()
 # ── TRUTH DETECTOR ───────────────────────────────────────────────────────
 
 @truth_bp.route("/truth", methods=["POST"])
+@require_auth
 def truth_endpoint():
     """Analyze OBD data for deception signals.
 
@@ -47,6 +49,7 @@ def truth_endpoint():
 # ── FAILURE PREDICTOR ────────────────────────────────────────────────────
 
 @truth_bp.route("/health", methods=["POST"])
+@require_auth
 def health_endpoint():
     """Analyze OBD sensor data for early failure warnings.
 
@@ -60,6 +63,7 @@ def health_endpoint():
 # ── EVENT BLACK BOX ──────────────────────────────────────────────────────
 
 @truth_bp.route("/blackbox/snap", methods=["POST"])
+@require_auth
 def blackbox_snap():
     """Record a single data snapshot. Returns event if triggered.
 
@@ -83,6 +87,7 @@ def blackbox_snap():
 
 
 @truth_bp.route("/blackbox/events", methods=["GET"])
+@require_auth
 def blackbox_events():
     """Return all recorded events."""
     return jsonify({
@@ -92,6 +97,7 @@ def blackbox_events():
 
 
 @truth_bp.route("/blackbox/clear", methods=["POST"])
+@require_auth
 def blackbox_clear():
     """Clear the event buffer and history."""
     _blackbox.clear()
@@ -101,6 +107,7 @@ def blackbox_clear():
 # ── QUOTE AUDITOR ────────────────────────────────────────────────────────
 
 @truth_bp.route("/audit", methods=["POST"])
+@require_auth
 def audit_endpoint():
     """Audit a mechanic's quote against OBD data.
 
@@ -123,6 +130,7 @@ def audit_endpoint():
 # ── COMBINED SCAN ────────────────────────────────────────────────────────
 
 @truth_bp.route("/scan", methods=["POST"])
+@require_auth
 def combined_scan():
     """The main endpoint. Runs truth + health analysis in one call.
 

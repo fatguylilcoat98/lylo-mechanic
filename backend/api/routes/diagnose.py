@@ -7,11 +7,13 @@ Truth · Safety · We Got Your Back
 
 from flask import Blueprint, jsonify, request
 from api.orchestrator import run_diagnosis
+from auth import require_auth
 
 diagnose_bp = Blueprint("diagnose", __name__)
 
 
 @diagnose_bp.route("/scenario/<scenario_id>", methods=["POST"])
+@require_auth
 def diagnose_scenario(scenario_id):
     """Run diagnosis on a named demo scenario."""
     from demo_scenarios.scenarios import get_scenario
@@ -29,6 +31,7 @@ def diagnose_scenario(scenario_id):
 
 
 @diagnose_bp.route("/run", methods=["POST"])
+@require_auth
 def diagnose_raw():
     """
     Run diagnosis on raw submitted data.
