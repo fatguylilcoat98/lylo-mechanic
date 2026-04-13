@@ -7,7 +7,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "build:apk": "eas build --platform android --profile preview",
-    "build:dev": "eas build --platform android --profile development"
+    "build:dev": "eas build --platform android --profile development",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@react-navigation/native": "^6.1.18",
@@ -23,7 +24,6 @@
     "react-native-screens": "~3.31.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "expo-dev-client": "~4.0.0"
+    "@babel/core": "^7.25.2"
   }
 }

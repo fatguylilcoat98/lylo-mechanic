@@ -1,36 +1,24 @@
 {
   "expo": {
-    "name": "LYLO Mechanic",
+    "name": "lylo-mechanic",
     "slug": "lylo-mechanic",
-    "version": "0.2.0",
-    "orientation": "portrait",
-    "icon": "./assets/lylo_mechanic_logo_.png",
-    "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/lylo_mechanic_logo_.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#070b14"
-    },
+    "version": "0.1.0",
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/lylo_mechanic_logo_.png",
-        "backgroundColor": "#070b14"
-      },
-      "package": "com.goodneighborguard.lylomechanic",
       "permissions": [
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
         "android.permission.BLUETOOTH_SCAN",
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "package": "com.goodneighborguard.lylomechanic"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.goodneighborguard.lylomechanic",
       "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "LYLO Mechanic needs Bluetooth to connect to your OBDLink adapter.",
-        "NSBluetoothPeripheralUsageDescription": "LYLO Mechanic needs Bluetooth to connect to your OBDLink adapter."
+        "NSBluetoothAlwaysUsageDescription": "LYLO Mechanic needs Bluetooth to connect",
+        "NSBluetoothPeripheralUsageDescription": "LYLO Mechanic needs Bluetooth"
       }
     },
     "plugins": [
@@ -49,8 +37,10 @@
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": false,
-          "modes": ["central"],
-          "bluetoothAlwaysPermission": "LYLO Mechanic needs Bluetooth to connect to your OBDLink adapter.",
+          "modes": [
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "LYLO Mechanic needs Bluetooth to connect",
           "neverForLocation": true
         }
       ],
@@ -61,6 +51,8 @@
         "projectId": "916eda9d-5bf2-40c4-abdb-22ea6e491d96"
       }
     },
-    "owner": "stangman1998"
+    "updates": {
+      "enabled": false
+    }
   }
 }
