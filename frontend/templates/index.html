@@ -10,6 +10,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LYLO Mechanic — The Good Neighbor Guard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -51,9 +52,6 @@
   --font-body:    'IBM Plex Sans', sans-serif;
 }
 
-/* ═══════════════════════════════════════════════════
-   RESET / BASE
-═══════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
@@ -66,7 +64,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Noise overlay */
 body::before {
   content: '';
   position: fixed;
@@ -78,7 +75,167 @@ body::before {
 }
 
 /* ═══════════════════════════════════════════════════
-   LAYOUT
+   AUTH MODAL
+═══════════════════════════════════════════════════ */
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,12,15,0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.auth-modal.hidden { display: none; }
+
+.auth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  padding: 40px;
+  max-width: 420px;
+  width: 90%;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.auth-logo {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--gng-gold), #a07830);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  margin: 0 auto 16px;
+}
+
+.auth-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--txt-hi);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.auth-sub {
+  font-size: 13px;
+  color: var(--txt-dim);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.auth-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 16px;
+  color: var(--txt);
+  font-family: var(--font-body);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-card2);
+}
+
+.auth-input::placeholder {
+  color: var(--txt-dim);
+}
+
+.auth-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  padding: 12px 16px;
+  color: var(--bg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.auth-btn:hover { background: #00a8ff; }
+.auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.auth-toggle {
+  text-align: center;
+  font-size: 13px;
+  color: var(--txt-dim);
+}
+
+.auth-toggle a {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+
+.auth-toggle a:hover { color: #00a8ff; }
+
+.auth-error {
+  background: var(--danger-bg);
+  border: 1px solid rgba(224,60,60,0.3);
+  color: var(--danger);
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  display: none;
+}
+
+.auth-error.show { display: block; }
+
+.auth-loading {
+  display: none;
+  text-align: center;
+  color: var(--txt-dim);
+  font-size: 12px;
+}
+
+.auth-loading.show { display: block; }
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.auth-success {
+  background: var(--safe-bg);
+  border: 1px solid rgba(0,200,122,0.3);
+  color: var(--safe);
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: none;
+}
+
+.auth-success.show { display: block; }
+
+/* ═══════════════════════════════════════════════════
+   APP LAYOUT
 ═══════════════════════════════════════════════════ */
 .app {
   position: relative;
@@ -93,164 +250,8 @@ body::before {
   min-height: 100vh;
 }
 
-/* ═══════════════════════════════════════════════════
-   PARTNERSHIP BANNER
-═══════════════════════════════════════════════════ */
-.partner-banner {
-  grid-area: partner;
-  background: linear-gradient(90deg, #0d1a2a 0%, #0f1e30 40%, #0d1a2a 100%);
-  border-bottom: 1px solid #1a3048;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  padding: 0;
-  height: 38px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Subtle scan line animation */
-.partner-banner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 120px,
-    rgba(26,143,255,0.025) 120px,
-    rgba(26,143,255,0.025) 121px
-  );
-  pointer-events: none;
-}
-
-/* Moving shimmer */
-.partner-banner::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(26,143,255,0.04), transparent);
-  animation: banner-shimmer 6s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes banner-shimmer {
-  0%   { left: -60%; }
-  100% { left: 160%; }
-}
-
-.partner-inner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  position: relative;
-  z-index: 1;
-}
-
-.partner-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: #3a6080;
-  text-transform: uppercase;
-}
-
-.partner-divider {
-  width: 1px;
-  height: 16px;
-  background: #1a3048;
-}
-
-.partner-built {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: #4a7090;
-  text-transform: uppercase;
-}
-
-.partner-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* OBDLink wordmark — text-based, clean */
-.obdlink-wordmark {
-  display: flex;
-  align-items: center;
-  gap: 0px;
-}
-
-.obdlink-obd {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: #e8f4ff;
-  line-height: 1;
-}
-
-.obdlink-link {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  color: #1a8fff;
-  line-height: 1;
-}
-
-.obdlink-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(26,143,255,0.08);
-  border: 1px solid rgba(26,143,255,0.2);
-  border-radius: 2px;
-  padding: 2px 8px;
-}
-
-.obdlink-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #1a8fff;
-  animation: obdlink-pulse 2.5s ease-in-out infinite;
-}
-@keyframes obdlink-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(26,143,255,0); }
-  50%       { opacity: 0.6; box-shadow: 0 0 6px 2px rgba(26,143,255,0.3); }
-}
-
-.partner-hardware-tag {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: #2a5070;
-  text-transform: uppercase;
-  padding-left: 2px;
-}
-
-/* Right side — connector plug icon + adapter model */
-.partner-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 6px;
-}
-
-.partner-model {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: #2a5070;
-  letter-spacing: 0.08em;
-}
-
-.partner-plug {
-  opacity: 0.3;
+.app.auth-mode {
+  display: none;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -268,1385 +269,124 @@ body::before {
   top: 0;
   z-index: 100;
 }
+
 .header-logo {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+
 .logo-mark {
   width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, var(--gng-gold), #a07830);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.logo-text {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: 0.08em;
-  color: var(--txt-hi);
-}
-.logo-sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--gng-gold);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-.header-divider {
-  width: 1px;
-  height: 32px;
-  background: var(--border);
-  margin: 0 8px;
-}
-.header-title {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--txt-mid);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.header-spacer { flex: 1; }
-.header-badge {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-dim);
-  letter-spacing: 0.1em;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-}
-.session-id {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--accent);
-  letter-spacing: 0.08em;
-  display: none;
-}
-.session-id.visible { display: block; }
+< truncated lines 281-1080 >
+  const errorEl = document.getElementById('authError');
+  const loadingEl = document.getElementById('authLoading');
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const successEl = document.getElementById('authSuccess');
 
-/* ═══════════════════════════════════════════════════
-   SIDEBAR
-═══════════════════════════════════════════════════ */
-.sidebar {
-  grid-area: sidebar;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
-  padding: 20px 0;
-}
-.sidebar-section {
-  padding: 0 16px;
-  margin-bottom: 24px;
-}
-.sidebar-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-dim);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 0 4px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.sidebar-label::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
+  errorEl.classList.remove('show');
+  successEl.classList.remove('show');
+  loadingEl.classList.add('show');
+  submitBtn.disabled = true;
 
-/* Connection Panel */
-.connection-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 14px;
-}
-.conn-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.conn-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--txt-dim);
-  flex-shrink: 0;
-  transition: background 0.3s;
-}
-.conn-dot.connected { background: var(--safe); box-shadow: 0 0 8px var(--safe); animation: pulse-dot 2s infinite; }
-.conn-dot.scanning  { background: var(--accent); animation: pulse-dot 0.8s infinite; }
-.conn-dot.error     { background: var(--danger); }
-@keyframes pulse-dot {
-  0%,100% { opacity: 1; }
-  50%      { opacity: 0.4; }
-}
-.conn-label {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--txt-hi);
-  letter-spacing: 0.04em;
-}
-.conn-detail {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-dim);
-}
-.conn-protocol {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-mid);
-  margin-bottom: 12px;
-  padding: 4px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-}
-
-/* Scenario Selector */
-.scenario-btn {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 10px 12px;
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: var(--txt);
-  font-family: var(--font-body);
-}
-.scenario-btn:hover {
-  border-color: var(--accent);
-  background: var(--accent-glow);
-  transform: translateX(2px);
-}
-.scenario-btn.active {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-}
-.scenario-btn .s-label {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--txt-hi);
-  display: block;
-  margin-bottom: 2px;
-}
-.scenario-btn .s-desc {
-  font-size: 11px;
-  color: var(--txt-dim);
-  display: block;
-  line-height: 1.4;
-}
-.scenario-btn .s-badge {
-  display: inline-block;
-  margin-top: 4px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  padding: 2px 6px;
-  border-radius: 2px;
-}
-
-/* Safety badge colors on scenario buttons */
-.s-badge.safe       { background: var(--safe-bg);      color: var(--safe);      border: 1px solid rgba(0,200,122,0.3); }
-.s-badge.caution    { background: var(--caution-bg);   color: var(--caution);   border: 1px solid rgba(240,180,41,0.3); }
-.s-badge.warning    { background: var(--warning-bg);   color: var(--warning);   border: 1px solid rgba(240,124,41,0.3); }
-.s-badge.danger     { background: var(--danger-bg);    color: var(--danger);    border: 1px solid rgba(224,60,60,0.3); }
-.s-badge.emergency  { background: var(--emergency-bg); color: var(--emergency); border: 1px solid rgba(255,26,26,0.4); }
-
-/* ═══════════════════════════════════════════════════
-   MAIN CONTENT
-═══════════════════════════════════════════════════ */
-.main {
-  grid-area: main;
-  overflow-y: auto;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* ═══════════════════════════════════════════════════
-   WELCOME / IDLE STATE
-═══════════════════════════════════════════════════ */
-.welcome-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 60px 40px;
-  gap: 20px;
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-.welcome-state.hidden { display: none; }
-.welcome-icon {
-  width: 80px;
-  height: 80px;
-  border: 1px solid var(--border-hi);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-card);
-  margin: 0 auto;
-}
-.welcome-icon svg { opacity: 0.4; }
-.welcome-title {
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--txt-hi);
-  letter-spacing: 0.05em;
-}
-.welcome-sub {
-  font-size: 14px;
-  color: var(--txt-mid);
-  max-width: 440px;
-  line-height: 1.7;
-}
-.welcome-cta {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-dim);
-  letter-spacing: 0.1em;
-  margin-top: 8px;
-}
-.welcome-cta span {
-  color: var(--accent);
-}
-
-/* ═══════════════════════════════════════════════════
-   SCANNING STATE
-═══════════════════════════════════════════════════ */
-.scanning-state {
-  display: none;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px;
-}
-.scanning-state.visible { display: flex; }
-.scan-header {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--txt-hi);
-  letter-spacing: 0.06em;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.scan-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.scan-log {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-dim);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 12px 16px;
-  line-height: 2;
-}
-.scan-log-line { color: var(--accent); }
-.scan-log-line.done { color: var(--safe); }
-.scan-progress {
-  height: 2px;
-  background: var(--border);
-  border-radius: 1px;
-  overflow: hidden;
-}
-.scan-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), #00c8ff);
-  width: 0%;
-  transition: width 0.4s ease;
-  border-radius: 1px;
-}
-
-/* ═══════════════════════════════════════════════════
-   RESULTS STATE
-═══════════════════════════════════════════════════ */
-.results-state { display: none; }
-
-/* ═══════════════════════════════════════════════════
-   TOP ROW — Vehicle + Confidence + Safety
-═══════════════════════════════════════════════════ */
-.top-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 16px;
-  align-items: start;
-}
-
-/* Vehicle Panel */
-.vehicle-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 16px 20px;
-}
-.vehicle-make {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--txt-hi);
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-}
-.vehicle-details {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-mid);
-  margin-top: 4px;
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.vehicle-details span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.vehicle-details span::before {
-  content: '';
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--border-hi);
-}
-.vd-odometer { color: var(--txt-mid); }
-
-/* Confidence Meter */
-.confidence-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 16px 20px;
-  min-width: 160px;
-  text-align: center;
-}
-.conf-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-dim);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-.conf-number {
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--txt-hi);
-  line-height: 1;
-  margin-bottom: 6px;
-}
-.conf-number span {
-  font-size: 16px;
-  color: var(--txt-mid);
-}
-.conf-bar {
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-.conf-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.8s ease, background 0.3s;
-}
-.conf-bar-fill.high     { background: var(--safe); }
-.conf-bar-fill.moderate { background: var(--caution); }
-.conf-bar-fill.low      { background: var(--warning); }
-.conf-bar-fill.very-low { background: var(--danger); }
-.conf-quality {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-}
-.conf-quality.high     { color: var(--safe); }
-.conf-quality.moderate { color: var(--caution); }
-.conf-quality.low      { color: var(--warning); }
-.conf-quality.very-low { color: var(--danger); }
-
-/* Safety Badge — the most important card */
-.safety-panel {
-  border-radius: 4px;
-  padding: 16px 20px;
-  min-width: 200px;
-  border: 1px solid;
-  position: relative;
-  overflow: hidden;
-}
-.safety-panel::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 3px;
-  height: 100%;
-}
-.safety-panel.safe        { background: var(--safe-bg);      border-color: rgba(0,200,122,0.3); }
-.safety-panel.safe::before { background: var(--safe); }
-.safety-panel.caution     { background: var(--caution-bg);   border-color: rgba(240,180,41,0.3); }
-.safety-panel.caution::before { background: var(--caution); }
-.safety-panel.warning     { background: var(--warning-bg);   border-color: rgba(240,124,41,0.3); }
-.safety-panel.warning::before { background: var(--warning); }
-.safety-panel.danger      { background: var(--danger-bg);    border-color: rgba(224,60,60,0.4); }
-.safety-panel.danger::before { background: var(--danger); }
-.safety-panel.emergency   { background: var(--emergency-bg); border-color: rgba(255,26,26,0.5); animation: emergency-pulse 1.5s infinite; }
-.safety-panel.emergency::before { background: var(--emergency); }
-@keyframes emergency-pulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(255,26,26,0); }
-  50%      { box-shadow: 0 0 16px 2px rgba(255,26,26,0.2); }
-}
-.safety-tag {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-  opacity: 0.7;
-}
-.safety-level {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  margin-bottom: 8px;
-}
-.safety-panel.safe      .safety-level { color: var(--safe); }
-.safety-panel.caution   .safety-level { color: var(--caution); }
-.safety-panel.warning   .safety-level { color: var(--warning); }
-.safety-panel.danger    .safety-level { color: var(--danger); }
-.safety-panel.emergency .safety-level { color: var(--emergency); }
-.safety-reason {
-  font-size: 11px;
-  color: var(--txt-mid);
-  line-height: 1.5;
-}
-.safety-triggers {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.safety-trigger-item {
-  font-size: 11px;
-  color: var(--txt-dim);
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  line-height: 1.4;
-}
-.safety-trigger-item::before {
-  content: '›';
-  flex-shrink: 0;
-  opacity: 0.5;
-  margin-top: 1px;
-}
-
-/* ═══════════════════════════════════════════════════
-   CONTENT GRID
-═══════════════════════════════════════════════════ */
-.content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.content-grid.full { grid-template-columns: 1fr; }
-
-/* ═══════════════════════════════════════════════════
-   CARDS
-═══════════════════════════════════════════════════ */
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.card-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.card-title {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--txt-hi);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.card-tag {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: var(--txt-dim);
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-}
-.card-body { padding: 14px 16px; }
-
-/* ═══════════════════════════════════════════════════
-   WHAT WE KNOW
-═══════════════════════════════════════════════════ */
-.known-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.known-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 12px;
-  line-height: 1.5;
-  padding: 8px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-}
-.known-item .ki-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-.known-item .ki-dot.warn { background: var(--caution); }
-.known-item .ki-dot.err  { background: var(--danger); }
-.known-item.flag-item {
-  border-color: rgba(240,180,41,0.3);
-  background: var(--caution-bg);
-}
-.known-item.flag-item .ki-dot { background: var(--caution); }
-
-/* ═══════════════════════════════════════════════════
-   HYPOTHESIS CARDS
-═══════════════════════════════════════════════════ */
-.hyp-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.hyp-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-.hyp-card:hover { border-color: var(--border-hi); }
-.hyp-card.rank-1 { border-left: 3px solid var(--accent); }
-.hyp-card.rank-2 { border-left: 3px solid rgba(26,143,255,0.5); }
-.hyp-card.rank-3 { border-left: 3px solid rgba(26,143,255,0.25); }
-.hyp-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  cursor: pointer;
-  user-select: none;
-}
-.hyp-rank {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-dim);
-  width: 20px;
-  flex-shrink: 0;
-}
-.hyp-name {
-  flex: 1;
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--txt-hi);
-  letter-spacing: 0.02em;
-}
-.hyp-conf-pill {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  padding: 3px 8px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-.hyp-conf-pill.high     { background: rgba(0,200,122,0.12);  color: var(--safe);    border: 1px solid rgba(0,200,122,0.3); }
-.hyp-conf-pill.moderate { background: rgba(240,180,41,0.12); color: var(--caution); border: 1px solid rgba(240,180,41,0.3); }
-.hyp-conf-pill.low      { background: rgba(240,124,41,0.10); color: var(--warning); border: 1px solid rgba(240,124,41,0.25); }
-.hyp-conf-pill.speculative { background: rgba(224,60,60,0.10); color: var(--txt-mid); border: 1px solid var(--border); }
-.hyp-basis {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--txt-dim);
-  letter-spacing: 0.08em;
-  flex-shrink: 0;
-}
-.hyp-body {
-  padding: 0 12px;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s;
-}
-.hyp-body.open {
-  max-height: 400px;
-  padding: 0 12px 12px;
-}
-.hyp-desc {
-  font-size: 12px;
-  color: var(--txt-mid);
-  line-height: 1.6;
-  margin-bottom: 10px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
-}
-.hyp-evidence {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 8px;
-}
-.hyp-ev-item {
-  font-size: 11px;
-  color: var(--txt-dim);
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-}
-.hyp-ev-item::before { content: '✓'; color: var(--safe); flex-shrink: 0; }
-.wrong-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--txt-dim);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-  margin-top: 6px;
-}
-.wrong-item {
-  font-size: 11px;
-  color: var(--txt-dim);
-  display: flex;
-  gap: 6px;
-  padding: 4px 0;
-}
-.wrong-item::before { content: '?'; color: var(--caution); flex-shrink: 0; font-family: var(--font-mono); }
-
-/* Confidence bar in hyp */
-.hyp-conf-bar {
-  height: 2px;
-  background: var(--border);
-  border-radius: 1px;
-  overflow: hidden;
-  margin-top: 8px;
-}
-.hyp-conf-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 1px;
-  transition: width 0.8s ease;
-}
-
-/* ═══════════════════════════════════════════════════
-   COST CARDS
-═══════════════════════════════════════════════════ */
-.cost-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.cost-tier {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 12px;
-  text-align: center;
-}
-.cost-tier-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--txt-dim);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.cost-tier-amount {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--txt-hi);
-  line-height: 1;
-}
-.cost-tier-amount .cents { font-size: 12px; color: var(--txt-mid); }
-.cost-tier-range {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-dim);
-  margin-top: 3px;
-}
-.cost-tier.diy { border-top: 2px solid var(--safe); }
-.cost-tier.shop { border-top: 2px solid var(--caution); }
-.cost-tier.dealer { border-top: 2px solid var(--txt-dim); }
-.cost-cause-selector {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-.cost-cause-btn {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--bg);
-  color: var(--txt-dim);
-  cursor: pointer;
-  transition: all 0.15s;
-  letter-spacing: 0.05em;
-}
-.cost-cause-btn:hover { border-color: var(--accent); color: var(--txt); }
-.cost-cause-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-.cost-volatility {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
-}
-.vol-dot { width: 6px; height: 6px; border-radius: 50%; }
-.vol-dot.LOW    { background: var(--safe); }
-.vol-dot.MEDIUM { background: var(--caution); }
-.vol-dot.HIGH   { background: var(--danger); }
-.cost-uncertainty { margin-top: 10px; }
-.cost-unc-item {
-  font-size: 11px;
-  color: var(--txt-dim);
-  padding: 3px 0;
-  display: flex;
-  gap: 6px;
-}
-.cost-unc-item::before { content: '↳'; color: var(--txt-dim); flex-shrink: 0; }
-.parts-list { margin-top: 10px; }
-.parts-header {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--txt-dim);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.part-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  padding: 5px 8px;
-  background: var(--bg-card2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  margin-bottom: 4px;
-}
-.part-name { color: var(--txt); flex: 1; }
-.part-price { font-family: var(--font-mono); font-size: 10px; color: var(--txt-mid); }
-
-/* ═══════════════════════════════════════════════════
-   REPAIR PATH CARD
-═══════════════════════════════════════════════════ */
-.repair-path {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.diy-verdict {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 3px;
-  border: 1px solid;
-}
-.diy-verdict.allowed      { background: var(--safe-bg);    border-color: rgba(0,200,122,0.3); }
-.diy-verdict.caution      { background: var(--caution-bg); border-color: rgba(240,180,41,0.3); }
-.diy-verdict.assisted     { background: var(--warning-bg); border-color: rgba(240,124,41,0.3); }
-.diy-verdict.professional { background: var(--bg);         border-color: var(--border); }
-.diy-verdict.blocked      { background: var(--danger-bg);  border-color: rgba(224,60,60,0.3); }
-.diy-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-.diy-info { flex: 1; }
-.diy-label {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.diy-verdict.allowed      .diy-label { color: var(--safe); }
-.diy-verdict.caution      .diy-label { color: var(--caution); }
-.diy-verdict.assisted     .diy-label { color: var(--warning); }
-.diy-verdict.professional .diy-label { color: var(--txt-mid); }
-.diy-verdict.blocked      .diy-label { color: var(--danger); }
-.diy-sub { font-size: 11px; color: var(--txt-dim); margin-top: 2px; }
-.diy-skill-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.diy-pill {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  color: var(--txt-dim);
-  letter-spacing: 0.06em;
-}
-.tools-list {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 10px 12px;
-}
-.tools-header {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--txt-dim);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.tool-item {
-  font-size: 12px;
-  color: var(--txt-mid);
-  padding: 2px 0;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.tool-item::before {
-  content: '⟶';
-  color: var(--txt-dim);
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-/* Tutorial gate */
-.tutorial-gate {
-  padding: 12px 14px;
-  border: 1px solid;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.tutorial-gate.available { border-color: rgba(26,143,255,0.3); background: var(--accent-dim); }
-.tutorial-gate.blocked   { border-color: var(--border); background: var(--bg); }
-.tutorial-gate-icon { font-size: 18px; }
-.tutorial-gate-text { flex: 1; }
-.tutorial-gate-title {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-.tutorial-gate.available .tutorial-gate-title { color: var(--accent); }
-.tutorial-gate.blocked   .tutorial-gate-title { color: var(--txt-dim); }
-.tutorial-gate-reason { font-size: 11px; color: var(--txt-dim); margin-top: 2px; }
-.btn-tutorial {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 6px 16px;
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  background: var(--accent-dim);
-  color: var(--accent);
-  cursor: pointer;
-  letter-spacing: 0.08em;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-.btn-tutorial:hover { background: var(--accent); color: var(--bg); }
-
-/* ═══════════════════════════════════════════════════
-   CHECK FIRST
-═══════════════════════════════════════════════════ */
-.check-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.check-item {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  font-size: 12px;
-  color: var(--txt-mid);
-  line-height: 1.5;
-  padding: 8px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-}
-.check-num {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--accent);
-  flex-shrink: 0;
-  min-width: 18px;
-  margin-top: 1px;
-}
-
-/* ═══════════════════════════════════════════════════
-   VERACORE FLAGS
-═══════════════════════════════════════════════════ */
-.veracore-section {
-  background: var(--bg-card);
-  border: 1px solid rgba(200,168,75,0.3);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.veracore-header {
-  background: rgba(200,168,75,0.06);
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(200,168,75,0.2);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.veracore-title {
-  font-family: var(--font-display);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--gng-gold);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.veracore-subtitle {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: rgba(200,168,75,0.5);
-  flex: 1;
-}
-.veracore-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
-.flag-item-v {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 8px 10px;
-  border-radius: 3px;
-  border: 1px solid;
-}
-.flag-item-v.info     { background: rgba(26,143,255,0.05);  border-color: rgba(26,143,255,0.2); }
-.flag-item-v.caution  { background: rgba(240,180,41,0.06);  border-color: rgba(240,180,41,0.25); }
-.flag-item-v.critical { background: rgba(224,60,60,0.07);   border-color: rgba(224,60,60,0.25); }
-.flag-severity {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  flex-shrink: 0;
-  margin-top: 2px;
-  text-transform: uppercase;
-}
-.flag-item-v.info     .flag-severity { color: var(--accent); }
-.flag-item-v.caution  .flag-severity { color: var(--caution); }
-.flag-item-v.critical .flag-severity { color: var(--danger); }
-.flag-msg { font-size: 12px; color: var(--txt-mid); line-height: 1.5; }
-
-/* ═══════════════════════════════════════════════════
-   HANDSHAKE BANNER
-═══════════════════════════════════════════════════ */
-.handshake-banner {
-  background: rgba(26,143,255,0.06);
-  border: 1px solid rgba(26,143,255,0.25);
-  border-radius: 4px;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.handshake-icon { font-size: 20px; flex-shrink: 0; }
-.handshake-text { flex: 1; }
-.handshake-title {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  letter-spacing: 0.04em;
-}
-.handshake-reason { font-size: 11px; color: var(--txt-dim); margin-top: 2px; }
-.btn-acknowledge {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 6px 16px;
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  letter-spacing: 0.08em;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-.btn-acknowledge:hover { background: var(--accent); color: var(--bg); }
-.btn-acknowledge.acknowledged { background: var(--safe-bg); border-color: rgba(0,200,122,0.3); color: var(--safe); cursor: default; }
-
-/* ═══════════════════════════════════════════════════
-   SESSION FLAGS
-═══════════════════════════════════════════════════ */
-.session-flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.flag-chip {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  padding: 3px 8px;
-  border-radius: 2px;
-  text-transform: uppercase;
-}
-.flag-chip.warn { background: var(--caution-bg); color: var(--caution); border: 1px solid rgba(240,180,41,0.3); }
-.flag-chip.info { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(26,143,255,0.2); }
-.flag-chip.err  { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(224,60,60,0.3); }
-
-/* ═══════════════════════════════════════════════════
-   WHAT THIS MEANS (narrative)
-═══════════════════════════════════════════════════ */
-.meaning-text {
-  font-size: 13px;
-  color: var(--txt-mid);
-  line-height: 1.7;
-  padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  border-left: 3px solid var(--accent);
-}
-
-/* ═══════════════════════════════════════════════════
-   READINESS MONITORS
-═══════════════════════════════════════════════════ */
-.monitors-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 6px;
-}
-.monitor-chip {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  font-size: 11px;
-}
-.monitor-name { color: var(--txt-mid); flex: 1; font-size: 11px; }
-.monitor-status {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.08em;
-}
-.monitor-status.complete   { color: var(--safe); }
-.monitor-status.incomplete { color: var(--caution); }
-.monitor-status.not_applicable { color: var(--txt-dim); }
-.monitor-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-.monitor-dot.complete   { background: var(--safe); }
-.monitor-dot.incomplete { background: var(--caution); }
-.monitor-dot.not_applicable { background: var(--border-hi); }
-
-/* ═══════════════════════════════════════════════════
-   PROFESSIONAL TRIGGERS
-═══════════════════════════════════════════════════ */
-.pro-triggers {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.pro-trigger {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  font-size: 12px;
-  color: var(--txt-mid);
-  padding: 8px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  line-height: 1.5;
-}
-.pro-trigger::before {
-  content: '⚑';
-  color: var(--warning);
-  flex-shrink: 0;
-  font-size: 11px;
-  margin-top: 1px;
-}
-
-/* ═══════════════════════════════════════════════════
-   EMPTY / NO RESULT STATES
-═══════════════════════════════════════════════════ */
-.empty-state {
-  padding: 24px;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-dim);
-  letter-spacing: 0.06em;
-}
-
-/* ═══════════════════════════════════════════════════
-   ANIMATIONS
-═══════════════════════════════════════════════════ */
-.fade-in {
-  animation: fadeIn 0.4s ease forwards;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.10s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.20s; }
-
-/* ═══════════════════════════════════════════════════
-   SCROLLBAR
-═══════════════════════════════════════════════════ */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #2e4055; }
-
-/* ═══════════════════════════════════════════════════
-   RESPONSIVE
-═══════════════════════════════════════════════════ */
-@media (max-width: 900px) {
-  .app {
-    grid-template-columns: 1fr;
-    grid-template-rows: 64px auto auto 1fr;
-    grid-template-areas: "header" "partner" "sidebar" "main";
+  try {
+    if (isSignUpMode) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin }
+      });
+      if (error) throw error;
+      successEl.textContent = 'Account created! Check your email to confirm.';
+      successEl.classList.add('show');
+      setTimeout(() => {
+        isSignUpMode = false;
+        updateAuthUI();
+        document.getElementById('authForm').reset();
+      }, 2000);
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      currentSession = data.session;
+      document.getElementById('authModal').classList.add('hidden');
+      document.getElementById('app').style.display = 'grid';
+      document.getElementById('userEmail').textContent = email;
+      await loadScenarios();
+    }
+  } catch (error) {
+    errorEl.textContent = error.message || 'Authentication failed. Try again.';
+    errorEl.classList.add('show');
+  } finally {
+    loadingEl.classList.remove('show');
+    submitBtn.disabled = false;
   }
-  .partner-banner { height: auto; padding: 6px 16px; }
-  .partner-inner { flex-wrap: wrap; gap: 8px; justify-content: center; }
-  .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 280px; }
-  .top-row { grid-template-columns: 1fr; }
-  .content-grid { grid-template-columns: 1fr; }
-  .cost-grid { grid-template-columns: 1fr; }
 }
-</style>
-</head>
-<body>
-<div class="app" id="app">
 
-  <!-- ════ HEADER ════ -->
-  <header class="header">
-    <div class="header-logo">
-      <div class="logo-mark"></div>
-      <div>
-        <div class="logo-text">LYLO</div>
-        <div class="logo-sub">Good Neighbor Guard</div>
-      </div>
-    </div>
-    <div class="header-divider"></div>
-    <div class="header-title">Mechanic</div>
-    <div class="header-spacer"></div>
-    <span class="session-id" id="sessionId"></span>
-    <div class="header-badge">OBDLink MX+ · DEMO</div>
-  </header>
+function toggleAuthMode() {
+  isSignUpMode = !isSignUpMode;
+  updateAuthUI();
+  document.getElementById('authForm').reset();
+  document.getElementById('authError').classList.remove('show');
+  document.getElementById('authSuccess').classList.remove('show');
+}
 
-  <!-- ════ PARTNERSHIP BANNER ════ -->
-  <div class="partner-banner">
-    <div class="partner-inner">
-      <span class="partner-label">Hardware</span>
-      <div class="partner-divider"></div>
-      <span class="partner-built">Built for</span>
-      <div class="partner-name">
-        <div class="obdlink-badge">
-          <div class="obdlink-dot"></div>
-          <div class="obdlink-wordmark">
-            <span class="obdlink-obd">OBD</span><span class="obdlink-link">Link</span>
-          </div>
-        </div>
-        <span class="partner-hardware-tag">MX+ &nbsp;&middot;&nbsp; EX &nbsp;&middot;&nbsp; LX Hardware</span>
-      </div>
-      <div class="partner-divider"></div>
-      <svg class="partner-plug" width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <rect x="4" y="1" width="6" height="4" rx="1" stroke="#4a7090" stroke-width="1.2"/>
-        <rect x="5" y="5" width="4" height="5" rx="0.5" stroke="#4a7090" stroke-width="1.2"/>
-        <line x1="7" y1="10" x2="7" y2="13" stroke="#4a7090" stroke-width="1.2" stroke-linecap="round"/>
-        <line x1="5" y1="2.5" x2="5" y2="4" stroke="#4a7090" stroke-width="1"/>
-        <line x1="9" y1="2.5" x2="9" y2="4" stroke="#4a7090" stroke-width="1"/>
-      </svg>
-      <span class="partner-model">obdlink.com</span>
-    </div>
-  </div>
+function updateAuthUI() {
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const toggleText = document.querySelector('.auth-toggle a');
+  const loadingText = document.getElementById('authLoadingText');
 
-  <!-- ════ SIDEBAR ════ -->
-  <aside class="sidebar">
+  if (isSignUpMode) {
+    submitBtn.textContent = 'Sign Up';
+    toggleText.textContent = 'Already have an account? Sign In';
+    loadingText.textContent = 'Creating account...';
+  } else {
+    submitBtn.textContent = 'Sign In';
+    toggleText.textContent = "Don't have an account? Sign Up";
+    loadingText.textContent = 'Signing in...';
+  }
+}
 
-    <div class="sidebar-section">
-      <div class="sidebar-label">Connection</div>
-      <div class="connection-panel">
-        <div class="conn-status">
-          <div class="conn-dot" id="connDot"></div>
-          <div>
-            <div class="conn-label" id="connLabel">Disconnected</div>
-            <div class="conn-detail" id="connDetail">Select a scenario to begin</div>
-          </div>
-        </div>
-        <div class="conn-protocol" id="connProtocol">Protocol: —</div>
-        <div id="monitorGrid" style="display:none"></div>
-      </div>
-    </div>
-
-    <div class="sidebar-section">
-      <div class="sidebar-label">Demo Scenarios</div>
-      <div id="scenarioList">
-        <div class="empty-state">Loading scenarios…</div>
-      </div>
-    </div>
-
-  </aside>
-
-  <!-- ════ MAIN ════ -->
-  <main class="main" id="mainContent">
-
-    <!-- WELCOME -->
-    <div class="welcome-state" id="welcomeState">
-      <div class="welcome-icon">
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <circle cx="20" cy="20" r="16" stroke="#1a8fff" stroke-width="1.5" stroke-dasharray="4 3"/>
-          <path d="M14 20 L18 24 L26 16" stroke="#1a8fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="20" cy="10" r="2" fill="#1a8fff" opacity="0.5"/>
-          <circle cx="20" cy="30" r="2" fill="#1a8fff" opacity="0.5"/>
-          <circle cx="10" cy="20" r="2" fill="#1a8fff" opacity="0.5"/>
-          <circle cx="30" cy="20" r="2" fill="#1a8fff" opacity="0.5"/>
-        </svg>
-      </div>
-      <div class="welcome-title">LYLO Mechanic</div>
-      <div class="welcome-sub">Multi-hypothesis vehicle diagnostics powered by real OBDLink data. Structured reasoning. Honest confidence. Consumer protection built in.</div>
-      <div class="welcome-cta">← Select a <span>demo scenario</span> to run a full diagnostic</div>
-    </div>
-
-    <!-- SCANNING -->
-    <div class="scanning-state" id="scanningState">
-      <div class="scan-header">
-        <div class="scan-spinner"></div>
-        Scanning vehicle…
-      </div>
-      <div class="scan-progress"><div class="scan-progress-bar" id="scanProgressBar"></div></div>
-      <div class="scan-log" id="scanLog"></div>
-    </div>
-
-    <!-- RESULTS -->
-    <div id="resultsState" style="display:none">
-
-      <!-- Top row: Vehicle + Confidence + Safety -->
-      <div class="top-row fade-in stagger-1" id="topRow" style="opacity:0"></div>
-
-      <!-- Session flags -->
-      <div id="flagsRow" style="display:none"></div>
-
-      <!-- Handshake banner -->
-      <div id="handshakeBanner" style="display:none"></div>
-
-      <!-- Content grid -->
-      <div class="content-grid fade-in stagger-2" id="contentGrid1" style="opacity:0"></div>
-      <div class="content-grid fade-in stagger-3" id="contentGrid2" style="opacity:0"></div>
-      <div id="veracoreSection" style="display:none; opacity:0" class="fade-in stagger-4"></div>
-
-    </div>
-
-  </main>
-</div>
-
-<script>
-/* ═══════════════════════════════════════════════════
-   APP STATE
-═══════════════════════════════════════════════════ */
-const API = window.location.origin + '/api/v1';
-let currentResult = null;
-let currentCostIndex = 0;
-let acknowledgedHandshake = false;
+async function handleLogout() {
+  await supabase.auth.signOut();
+  currentSession = null;
+  document.getElementById('authModal').classList.remove('hidden');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authForm').reset();
+  document.getElementById('authError').classList.remove('show');
+  document.getElementById('authSuccess').classList.remove('show');
+  isSignUpMode = false;
+  updateAuthUI();
+}
 
 /* ═══════════════════════════════════════════════════
-   SCENARIO BADGES
+   SCENARIOS
 ═══════════════════════════════════════════════════ */
 const SCENARIO_BADGES = {
   p0420_not_the_converter:        { cls: 'safe',      txt: 'SAFE TO DRIVE' },
   flashing_misfire:               { cls: 'danger',    txt: 'TOW RECOMMENDED' },
   no_code_brake_danger:           { cls: 'danger',    txt: 'DO NOT DRIVE' },
   cleared_codes_incomplete_monitors: { cls: 'caution', txt: 'SHORT DISTANCE' },
-  low_voltage_cascade:            { cls: 'warning',   txt: 'SAFE / LOW CONF' },
-  overheating:                    { cls: 'emergency', txt: 'EMERGENCY' },
-  lean_condition:                 { cls: 'warning',   txt: 'INSPECT SOON' },
-  cam_timing_vvt:                 { cls: 'danger',    txt: 'DO NOT DRIVE' },
-  manufacturer_specific_code:     { cls: 'warning',   txt: 'INSPECT SOON' },
-  no_code_vibration:              { cls: 'caution',   txt: 'NO CODES' },
 };
-
-/* ═══════════════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════════════ */
-async function init() {
-  await loadScenarios();
-}
 
 async function loadScenarios() {
   try {
-    const res = await fetch(`${API}/scenarios/list`);
+    const res = await fetch('/api/v1/scenarios/list', {
+      headers: {
+        'Authorization': `Bearer ${currentSession.access_token}`
+      }
+    });
     const list = await res.json();
     renderScenarioList(list);
   } catch(e) {
     document.getElementById('scenarioList').innerHTML =
-      '<div class="empty-state">Backend offline — start Flask server</div>';
+      '<div class="empty-state">Backend offline</div>';
   }
 }
 
 function renderScenarioList(list) {
   const el = document.getElementById('scenarioList');
   el.innerHTML = list.map(s => {
-    const badge = SCENARIO_BADGES[s.id] || { cls: 'info', txt: 'SCENARIO' };
+    const badge = SCENARIO_BADGES[s.id] || { cls: 'caution', txt: 'SCENARIO' };
     return `
       <button class="scenario-btn" onclick="runScenario('${s.id}', this)" data-id="${s.id}">
         <span class="s-label">${s.label}</span>
@@ -1656,36 +396,32 @@ function renderScenarioList(list) {
   }).join('');
 }
 
-/* ═══════════════════════════════════════════════════
-   RUN SCENARIO
-═══════════════════════════════════════════════════ */
 async function runScenario(id, btn) {
-  // UI reset
   document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  acknowledgedHandshake = false;
 
-  showScanning(id);
+  showScanning();
 
   try {
-    const res = await fetch(`${API}/diagnose/scenario/${id}`, { method: 'POST' });
+    const res = await fetch(`/api/v1/diagnose/scenario/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${currentSession.access_token}`
+      }
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    currentResult = data;
-    currentCostIndex = 0;
-    await showResults(data);
+    await delay(1400);
+    showResults(data);
   } catch(e) {
     showError(e.message);
   }
 }
 
-/* ═══════════════════════════════════════════════════
-   SCANNING ANIMATION
-═══════════════════════════════════════════════════ */
-function showScanning(id) {
-  hide('welcomeState');
+function showScanning() {
+  document.getElementById('welcomeState').style.display = 'none';
   document.getElementById('scanningState').style.display = 'flex';
-  hide('resultsState');
+  document.getElementById('resultsState').style.display = 'none';
 
   document.getElementById('connDot').className = 'conn-dot scanning';
   document.getElementById('connLabel').textContent = 'Connecting…';
@@ -1699,12 +435,7 @@ function showScanning(id) {
     ['Establishing OBD-II connection…', 10],
     ['Protocol detected: ISO 15765-4 CAN', 22],
     ['Reading active DTCs…', 38],
-    ['Reading pending DTCs…', 50],
-    ['Capturing live PIDs…', 62],
-    ['Reading freeze frame data…', 72],
-    ['Checking readiness monitors…', 82],
-    ['Running normalization layer…', 90],
-    ['Running hypothesis engine…', 96],
+    ['Running hypothesis engine…', 90],
     ['Applying Veracore truth check…', 100],
   ];
 
@@ -1729,55 +460,17 @@ function showScanning(id) {
   nextStep();
 }
 
-/* ═══════════════════════════════════════════════════
-   SHOW RESULTS
-═══════════════════════════════════════════════════ */
-async function showResults(data) {
-  await delay(1400);
+function showResults(data) {
+  document.getElementById('welcomeState').style.display = 'none';
+  document.getElementById('scanningState').style.display = 'none';
+  document.getElementById('resultsState').style.display = 'block';
 
-  hide('scanningState');
-  show('resultsState');
-
-  // Update connection panel
   document.getElementById('connDot').className = 'conn-dot connected';
   document.getElementById('connLabel').textContent = 'Connected';
   document.getElementById('connDetail').textContent = data.vehicle.make
     ? `${data.vehicle.year} ${data.vehicle.make} ${data.vehicle.model}`
     : 'Unknown Vehicle';
-  document.getElementById('connProtocol').textContent = 'Protocol: ISO 15765-4 CAN';
 
-  // Session ID
-  const sid = document.getElementById('sessionId');
-  sid.textContent = `SESSION ${data.session_id}`;
-  sid.classList.add('visible');
-
-  // Monitors
-  renderMonitors(data);
-
-  // TOP ROW
-  renderTopRow(data);
-
-  // Session flags
-  renderFlags(data.session_flags);
-
-  // Handshake
-  renderHandshake(data);
-
-  // Grid 1: What We Know + Hypotheses
-  renderGrid1(data);
-
-  // Grid 2: Cost + Repair Path
-  renderGrid2(data);
-
-  // Veracore
-  renderVeracore(data);
-
-  // Check First + Meaning + Monitors
-  renderGrid3(data);
-}
-
-/* ─── TOP ROW ────────────────────────────────────── */
-function renderTopRow(data) {
   const v = data.vehicle;
   const c = data.confidence;
   const s = data.safety;
@@ -1786,17 +479,11 @@ function renderTopRow(data) {
 
   document.getElementById('topRow').innerHTML = `
     <div class="vehicle-panel">
-      <div class="vehicle-make">${v.year || ''} ${v.make || ''} ${v.model || ''} ${v.trim || ''}</div>
+      <div class="vehicle-make">${v.year || ''} ${v.make || ''} ${v.model || ''}</div>
       <div class="vehicle-details">
         ${v.engine ? `<span>${v.engine}</span>` : ''}
-        ${v.transmission ? `<span>${v.transmission}</span>` : ''}
-        ${v.drive_type ? `<span>${v.drive_type}</span>` : ''}
-        ${v.odometer ? `<span class="vd-odometer">${v.odometer.toLocaleString()} mi</span>` : ''}
+        ${v.odometer ? `<span>${v.odometer.toLocaleString()} mi</span>` : ''}
       </div>
-      ${data.session_flags.length > 0 ? `
-      <div class="session-flags" style="margin-top:10px">
-        ${data.session_flags.map(f => `<span class="flag-chip ${flagClass(f)}">${f.replace(/_/g,' ')}</span>`).join('')}
-      </div>` : ''}
     </div>
 
     <div class="confidence-panel">
@@ -1806,432 +493,28 @@ function renderTopRow(data) {
         <div class="conf-bar-fill ${confClass}" id="confBarFill" style="width:0%"></div>
       </div>
       <div class="conf-quality ${confClass}">${(c.label || 'MODERATE').toUpperCase()}</div>
-      ${c.limit_reason ? `<div style="font-size:10px;color:var(--txt-dim);margin-top:6px;font-family:var(--font-mono);line-height:1.5">${c.limit_reason}</div>` : ''}
     </div>
 
     <div class="safety-panel ${safetyClass}">
       <div class="safety-tag">Safety Status</div>
       <div class="safety-level">${s.level.replace(/_/g,' ')}</div>
-      <div class="safety-triggers">
-        ${(s.triggering_conditions||[]).slice(0,3).map(t =>
-          `<div class="safety-trigger-item">${t}</div>`
-        ).join('')}
-      </div>
-      ${s.symptom_overrides_sensor ? `
-        <div style="margin-top:8px;font-family:var(--font-mono);font-size:9px;color:var(--caution);letter-spacing:0.08em">
-          ⚠ SYMPTOM OVERRIDES SENSOR DATA
-        </div>` : ''}
     </div>`;
 
-  // Animate confidence counter
   animateNumber('confNumber', 0, c.overall * 100, 800, v => `${Math.round(v)}<span>%</span>`);
   setTimeout(() => {
     document.getElementById('confBarFill').style.width = (c.overall * 100) + '%';
   }, 100);
 }
 
-/* ─── FLAGS ─────────────────────────────────────── */
-function renderFlags(flags) {
-  const el = document.getElementById('flagsRow');
-  if (!flags || flags.length === 0) { el.style.display = 'none'; return; }
-  el.style.display = 'block';
+function showError(msg) {
+  document.getElementById('welcomeState').style.display = 'flex';
+  document.getElementById('scanningState').style.display = 'none';
+  document.getElementById('resultsState').style.display = 'none';
+  document.getElementById('connDot').className = 'conn-dot';
+  document.getElementById('connLabel').textContent = 'Error';
+  document.getElementById('connDetail').textContent = msg;
 }
 
-/* ─── HANDSHAKE ──────────────────────────────────── */
-function renderHandshake(data) {
-  const el = document.getElementById('handshakeBanner');
-  if (!data.handshake_required) { el.style.display = 'none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = `
-    <div class="handshake-banner">
-      <div class="handshake-icon">🤝</div>
-      <div class="handshake-text">
-        <div class="handshake-title">Handshake Required</div>
-        <div class="handshake-reason">${data.handshake_reason || 'Review and acknowledge before proceeding'}</div>
-      </div>
-      <button class="btn-acknowledge" id="ackBtn" onclick="acknowledgeHandshake()">
-        I UNDERSTAND
-      </button>
-    </div>`;
-}
-
-function acknowledgeHandshake() {
-  acknowledgedHandshake = true;
-  const btn = document.getElementById('ackBtn');
-  if (btn) {
-    btn.textContent = '✓ ACKNOWLEDGED';
-    btn.classList.add('acknowledged');
-    btn.disabled = true;
-  }
-}
-
-/* ─── GRID 1: What We Know + Hypotheses ──────────── */
-function renderGrid1(data) {
-  const grid = document.getElementById('contentGrid1');
-
-  // What We Know
-  const knownHtml = `
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">What We Know</div>
-        <div class="card-tag">FROM OBD DATA</div>
-      </div>
-      <div class="card-body">
-        ${data.what_we_know && data.what_we_know.length > 0 ?
-          `<div class="known-list">
-            ${data.what_we_know.map(item => {
-              const isWarning = item.startsWith('⚠') || item.toLowerCase().includes('cleared') || item.toLowerCase().includes('incomplete');
-              const isErr = item.toLowerCase().includes('critical') || item.toLowerCase().includes('elevated');
-              return `<div class="known-item${isWarning ? ' flag-item' : ''}">
-                <div class="ki-dot${isErr ? ' err' : isWarning ? ' warn' : ''}"></div>
-                <div>${item}</div>
-              </div>`;
-            }).join('')}
-          </div>`
-          : '<div class="empty-state">No OBD data available</div>'
-        }
-        ${data.what_this_might_mean ? `
-          <div class="meaning-text" style="margin-top:12px">${data.what_this_might_mean}</div>
-        ` : ''}
-      </div>
-    </div>`;
-
-  // Hypotheses
-  const hypsHtml = `
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Likely Causes</div>
-        <div class="card-tag">${data.hypotheses.length} HYPOTHESIS${data.hypotheses.length !== 1 ? 'ES' : ''}</div>
-      </div>
-      <div class="card-body">
-        ${data.hypotheses.length > 0 ?
-          `<div class="hyp-list">
-            ${data.hypotheses.slice(0,5).map((h, i) => renderHypothesis(h, i)).join('')}
-          </div>` :
-          '<div class="empty-state">No hypotheses generated — symptom-only or incomplete data</div>'
-        }
-      </div>
-    </div>`;
-
-  grid.innerHTML = knownHtml + hypsHtml;
-
-  // Wire expand toggles
-  grid.querySelectorAll('.hyp-header').forEach(h => {
-    h.addEventListener('click', () => {
-      const body = h.nextElementSibling;
-      body.classList.toggle('open');
-      const arrow = h.querySelector('.hyp-arrow');
-      if (arrow) arrow.textContent = body.classList.contains('open') ? '▲' : '▼';
-    });
-  });
-
-  // Auto-open first hypothesis
-  const firstBody = grid.querySelector('.hyp-body');
-  if (firstBody) firstBody.classList.add('open');
-}
-
-function renderHypothesis(h, i) {
-  const clsMap = { 'HIGH':'high', 'MODERATE':'moderate', 'LOW':'low', 'SPECULATIVE':'speculative' };
-  const confLabel = h.confidence_label || getConfLabel(h.confidence_score);
-  const cls = clsMap[confLabel] || 'moderate';
-  const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : 'rank-3';
-  const basisLabel = (h.confidence_basis||'').replace(/_/g,' ').toUpperCase();
-
-  return `
-    <div class="hyp-card ${rankClass}">
-      <div class="hyp-header">
-        <div class="hyp-rank">${h.cause_rank}.</div>
-        <div class="hyp-name">${h.cause_name}</div>
-        <div class="hyp-conf-pill ${cls}">${h.confidence_score}%</div>
-        <div class="hyp-basis">${basisLabel}</div>
-        <div class="hyp-arrow" style="color:var(--txt-dim);font-size:10px;margin-left:4px">▼</div>
-      </div>
-      <div class="hyp-body">
-        <div class="hyp-conf-bar">
-          <div class="hyp-conf-bar-fill" style="width:${h.confidence_score}%"></div>
-        </div>
-        <div class="hyp-desc">${h.cause_description}</div>
-        ${h.supporting_evidence && h.supporting_evidence.length > 0 ? `
-          <div class="hyp-evidence">
-            ${h.supporting_evidence.map(e => `<div class="hyp-ev-item">${e}</div>`).join('')}
-          </div>` : ''}
-        ${h.what_could_make_this_wrong && h.what_could_make_this_wrong.length > 0 ? `
-          <div class="wrong-label">What could make this wrong</div>
-          ${h.what_could_make_this_wrong.map(w => `<div class="wrong-item">${w}</div>`).join('')}
-        ` : ''}
-        ${h.is_downstream ? `<div style="margin-top:8px;font-family:var(--font-mono);font-size:9px;color:var(--caution);letter-spacing:0.08em">⚠ POSSIBLE CASCADE FAULT — investigate root cause first</div>` : ''}
-      </div>
-    </div>`;
-}
-
-/* ─── GRID 2: Cost + Repair Path ─────────────────── */
-function renderGrid2(data) {
-  const grid = document.getElementById('contentGrid2');
-
-  // Cost Card
-  const costHtml = renderCostCard(data);
-
-  // Repair Path
-  const repairHtml = renderRepairCard(data);
-
-  grid.innerHTML = costHtml + repairHtml;
-
-  // Wire cost selector
-  grid.querySelectorAll('.cost-cause-btn').forEach((btn, i) => {
-    btn.addEventListener('click', () => {
-      grid.querySelectorAll('.cost-cause-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentCostIndex = i;
-      updateCostDisplay(data, i);
-    });
-  });
-  // init first
-  updateCostDisplay(data, 0);
-}
-
-function renderCostCard(data) {
-  if (!data.cost_estimates || data.cost_estimates.length === 0) {
-    return `<div class="card">
-      <div class="card-header"><div class="card-title">Cost Estimate</div></div>
-      <div class="card-body">
-        <div class="empty-state">No cost estimates available — ${data.confidence.blocked_outputs.includes('cost_estimate') ? 'confidence too low' : 'no pricing data'}</div>
-      </div>
-    </div>`;
-  }
-
-  const selectorBtns = data.cost_estimates.map((est, i) => {
-    const hyp = data.hypotheses.find(h => h.cause_id === est.cause_id);
-    const label = hyp ? truncate(hyp.cause_name, 28) : est.cause_id;
-    return `<button class="cost-cause-btn${i===0?' active':''}" data-index="${i}">${label}</button>`;
-  }).join('');
-
-  return `
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Cost Estimate</div>
-        <div class="card-tag">NATIONAL AVG</div>
-      </div>
-      <div class="card-body">
-        <div class="cost-cause-selector">${selectorBtns}</div>
-        <div id="costDisplay"></div>
-      </div>
-    </div>`;
-}
-
-function updateCostDisplay(data, index) {
-  const el = document.getElementById('costDisplay');
-  if (!el || !data.cost_estimates || !data.cost_estimates[index]) return;
-
-  const est = data.cost_estimates[index];
-  const hyp = data.hypotheses.find(h => h.cause_id === est.cause_id);
-
-  el.innerHTML = `
-    <div class="cost-volatility">
-      <div class="vol-dot ${est.volatility}"></div>
-      <span style="color:var(--txt-dim)">Estimate Volatility:</span>
-      <span style="color:var(--txt-mid)">${est.volatility}</span>
-    </div>
-    ${est.stale_warning ? `<div style="font-size:10px;color:var(--caution);font-family:var(--font-mono);margin-bottom:8px">⚠ PRICING DATA APPROACHING EXPIRY — verify before purchasing</div>` : ''}
-    <div class="cost-grid">
-      <div class="cost-tier diy">
-        <div class="cost-tier-label">DIY</div>
-        <div class="cost-tier-amount">$${est.diy.total_low}<span>–${est.diy.total_high}</span></div>
-        <div class="cost-tier-range">parts ${est.diy.total_low !== est.diy.parts_low ? '+ tools' : 'only'}</div>
-      </div>
-      <div class="cost-tier shop">
-        <div class="cost-tier-label">Shop</div>
-        <div class="cost-tier-amount">$${est.shop.total_low}<span>–${est.shop.total_high}</span></div>
-        <div class="cost-tier-range">${est.shop.labor_low}–${est.shop.labor_high}h labor</div>
-      </div>
-      <div class="cost-tier dealer">
-        <div class="cost-tier-label">Dealer</div>
-        <div class="cost-tier-amount">$${est.dealership.total_low}<span>–${est.dealership.total_high}</span></div>
-        <div class="cost-tier-range">${est.dealership.note ? truncate(est.dealership.note, 30) : 'OEM rates'}</div>
-      </div>
-    </div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--txt-dim);margin-bottom:8px">
-      DIY Time: ${est.time_to_complete_diy} &nbsp;·&nbsp; Labor: ${est.labor_hours_low}–${est.labor_hours_high}h
-    </div>
-    ${est.parts_list && est.parts_list.length > 0 ? `
-      <div class="parts-list">
-        <div class="parts-header">Parts Required</div>
-        ${est.parts_list.map(p => `
-          <div class="part-item">
-            <div class="part-name">${p.part_name} ${p.qty > 1 ? `×${p.qty}` : ''}</div>
-            <div class="part-price">$${p.cost_low}–$${p.cost_high}</div>
-          </div>
-          ${p.aftermarket_note ? `<div style="font-size:10px;color:var(--txt-dim);padding:2px 8px 4px;font-style:italic">${p.aftermarket_note}</div>` : ''}
-        `).join('')}
-      </div>` : ''}
-    ${est.uncertainty_factors && est.uncertainty_factors.length > 0 ? `
-      <div class="cost-uncertainty">
-        <div class="wrong-label">What could change this estimate</div>
-        ${est.uncertainty_factors.map(u => `<div class="cost-unc-item">${u}</div>`).join('')}
-        ${est.what_could_make_estimate_wrong.map(w => `<div class="cost-unc-item">${w}</div>`).join('')}
-      </div>` : ''}`;
-}
-
-function renderRepairCard(data) {
-  const diy = data.diy_eligibility;
-  const topHyp = data.hypotheses[0];
-
-  let diyHtml = '<div class="empty-state">No repair assessment available</div>';
-  if (diy) {
-    const vClass = getVerdictClass(diy.verdict);
-    const vIcon = getVerdictIcon(diy.verdict);
-    diyHtml = `
-      <div class="repair-path">
-        <div class="diy-verdict ${vClass}">
-          <div class="diy-icon">${vIcon}</div>
-          <div class="diy-info">
-            <div class="diy-label">${diy.verdict.replace(/_/g,' ')}</div>
-            ${diy.hard_stop_reason ? `<div class="diy-sub">${diy.hard_stop_reason}</div>` : ''}
-            <div class="diy-skill-row">
-              <span class="diy-pill">Skill: ${diy.skill_level_required}</span>
-              <span class="diy-pill">Risk: ${diy.risk_level}</span>
-              ${diy.requires_recalibration ? '<span class="diy-pill">Recal needed</span>' : ''}
-              ${diy.requires_programming ? '<span class="diy-pill">Programming needed</span>' : ''}
-            </div>
-          </div>
-        </div>
-        ${diy.required_tools && diy.required_tools.length > 0 ? `
-          <div class="tools-list">
-            <div class="tools-header">Tools Required</div>
-            ${diy.required_tools.map(t => `<div class="tool-item">${t}</div>`).join('')}
-            ${diy.special_equipment.map(t => `<div class="tool-item" style="color:var(--warning)">${t}</div>`).join('')}
-          </div>` : ''}
-        <div class="tutorial-gate ${data.tutorial_available ? 'available' : 'blocked'}">
-          <div class="tutorial-gate-icon">${data.tutorial_available ? '📋' : '🔒'}</div>
-          <div class="tutorial-gate-text">
-            <div class="tutorial-gate-title">${data.tutorial_available ? 'Tutorial Available' : 'Tutorial Blocked'}</div>
-            <div class="tutorial-gate-reason">
-              ${data.tutorial_available
-                ? `Step-by-step guide available for: ${topHyp ? topHyp.cause_name : 'this repair'}`
-                : (data.tutorial_blocked_reason || 'Tutorial not available for this scenario')}
-            </div>
-          </div>
-          ${data.tutorial_available
-            ? `<button class="btn-tutorial" onclick="alert('Tutorial content library is Phase 5 — gate logic is live and verified')">VIEW STEPS</button>`
-            : ''}
-        </div>
-      </div>`;
-  }
-
-  return `
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Repair Path</div>
-        <div class="card-tag">DIY GATE</div>
-      </div>
-      <div class="card-body">${diyHtml}</div>
-    </div>`;
-}
-
-/* ─── VERACORE ──────────────────────────────────── */
-function renderVeracore(data) {
-  const el = document.getElementById('veracoreSection');
-  if (!data.veracore_flags || data.veracore_flags.length === 0) {
-    el.style.display = 'none';
-    return;
-  }
-  el.style.display = 'block';
-  el.innerHTML = `
-    <div class="veracore-section">
-      <div class="veracore-header">
-        <div class="veracore-title">Veracore — Truth Check</div>
-        <div class="veracore-subtitle">${data.veracore_flags.length} flag${data.veracore_flags.length !== 1 ? 's' : ''} raised</div>
-      </div>
-      <div class="veracore-body">
-        ${data.veracore_flags.map(f => `
-          <div class="flag-item-v ${f.severity}">
-            <div class="flag-severity">${f.flag_type.replace(/_/g,' ')}</div>
-            <div class="flag-msg">${f.message}</div>
-          </div>`).join('')}
-      </div>
-    </div>`;
-}
-
-/* ─── GRID 3: Check First + Monitors + Pro Triggers ─ */
-function renderGrid3(data) {
-  // Inject below grid2
-  const existing = document.getElementById('grid3');
-  if (existing) existing.remove();
-
-  const el = document.createElement('div');
-  el.id = 'grid3';
-  el.className = 'content-grid fade-in';
-  el.style.opacity = '0';
-  el.style.animationDelay = '0.25s';
-
-  // What to check first
-  let checkHtml = '<div class="empty-state">No specific checks recommended</div>';
-  if (data.what_to_check_first && data.what_to_check_first.length > 0) {
-    checkHtml = `<div class="check-list">
-      ${data.what_to_check_first.map((c, i) =>
-        `<div class="check-item"><div class="check-num">${String(i+1).padStart(2,'0')}</div><div>${c}</div></div>`
-      ).join('')}
-    </div>`;
-  }
-
-  // Readiness monitors
-  let monitorHtml = '';
-  if (data.vehicle && data.confidence) {
-    // Pulled from connection panel but also show inline
-    monitorHtml = '';
-  }
-
-  // Professional triggers
-  let proHtml = '<div class="empty-state">No immediate professional help required</div>';
-  if (data.professional_help_triggers && data.professional_help_triggers.length > 0) {
-    proHtml = `<div class="pro-triggers">
-      ${data.professional_help_triggers.map(t =>
-        `<div class="pro-trigger">${t}</div>`
-      ).join('')}
-    </div>`;
-  }
-
-  el.innerHTML = `
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">What To Check First</div>
-        <div class="card-tag">ORDERED STEPS</div>
-      </div>
-      <div class="card-body">${checkHtml}</div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">When To Get Help Immediately</div>
-        <div class="card-tag">PROFESSIONAL TRIGGERS</div>
-      </div>
-      <div class="card-body">${proHtml}</div>
-    </div>`;
-
-  document.getElementById('resultsState').appendChild(el);
-}
-
-/* ─── MONITORS sidebar ───────────────────────────── */
-function renderMonitors(data) {
-  const grid = document.getElementById('monitorGrid');
-  if (!data.readiness_monitors || data.readiness_monitors.length === 0) {
-    grid.style.display = 'none';
-    return;
-  }
-  grid.style.display = 'block';
-  grid.innerHTML = `
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--txt-dim);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Readiness</div>
-    <div class="monitors-grid">
-      ${data.readiness_monitors.map(m => `
-        <div class="monitor-chip">
-          <div class="monitor-dot ${m.status}"></div>
-          <div class="monitor-name">${m.name}</div>
-          <div class="monitor-status ${m.status}">${m.status === 'not_applicable' ? 'N/A' : m.status.toUpperCase()}</div>
-        </div>`).join('')}
-    </div>`;
-}
-
-/* ═══════════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════════ */
 function getSafetyClass(level) {
   const map = {
     SAFE_TO_DRIVE: 'safe',
@@ -2243,49 +526,6 @@ function getSafetyClass(level) {
   };
   return map[level] || 'caution';
 }
-
-function getVerdictClass(verdict) {
-  const map = {
-    DIY_ALLOWED: 'allowed',
-    DIY_WITH_CAUTION: 'caution',
-    ASSISTED_REPAIR_ONLY: 'assisted',
-    PROFESSIONAL_ONLY: 'professional',
-    DANGEROUS_TO_ATTEMPT: 'blocked',
-  };
-  return map[verdict] || 'professional';
-}
-
-function getVerdictIcon(verdict) {
-  const map = {
-    DIY_ALLOWED: '🔧',
-    DIY_WITH_CAUTION: '⚠️',
-    ASSISTED_REPAIR_ONLY: '👥',
-    PROFESSIONAL_ONLY: '🏪',
-    DANGEROUS_TO_ATTEMPT: '🚫',
-  };
-  return map[verdict] || '🔧';
-}
-
-function getConfLabel(score) {
-  if (score >= 75) return 'HIGH';
-  if (score >= 50) return 'MODERATE';
-  if (score >= 30) return 'LOW';
-  return 'SPECULATIVE';
-}
-
-function flagClass(flag) {
-  if (flag.includes('CLEARED') || flag.includes('INCOMPLETE') || flag.includes('FLASHING')) return 'warn';
-  if (flag.includes('UNSTABLE') || flag.includes('DROPPED')) return 'err';
-  return 'info';
-}
-
-function truncate(str, n) {
-  return str && str.length > n ? str.slice(0, n) + '…' : str;
-}
-
-function show(id) { const el = document.getElementById(id); if(el) { el.style.display = (id === 'resultsState') ? 'block' : ''; el.classList.remove('hidden'); } }
-function hide(id) { const el = document.getElementById(id); if(el) { el.style.display='none'; } }
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function animateNumber(elId, from, to, duration, formatter) {
   const el = document.getElementById(elId);
@@ -2300,20 +540,21 @@ function animateNumber(elId, from, to, duration, formatter) {
   requestAnimationFrame(step);
 }
 
-function showError(msg) {
-  hide('scanningState');
-  hide('resultsState');
-  show('welcomeState');
-  document.getElementById('connDot').className = 'conn-dot error';
-  document.getElementById('connLabel').textContent = 'Error';
-  document.getElementById('connDetail').textContent = msg;
-  document.getElementById('connProtocol').textContent = 'Backend may be offline';
-}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 /* ═══════════════════════════════════════════════════
-   BOOT
+   INIT
 ═══════════════════════════════════════════════════ */
-init();
+checkAuthState();
+
+// Listen for auth changes
+supabase.auth.onAuthStateChange((event, session) => {
+  currentSession = session;
+  if (event === 'SIGNED_OUT') {
+    document.getElementById('authModal').classList.remove('hidden');
+    document.getElementById('app').style.display = 'none';
+  }
+});
 </script>
 </body>
 </html>
