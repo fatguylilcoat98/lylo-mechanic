@@ -56,7 +56,7 @@ from api.routes.obd2 import obd2_bp
 from api.routes.billing import billing_bp
 from api.routes.analyze import analyze_bp
 from api.routes.truth import truth_bp
-from auth import init_auth, get_user_id_from_request
+from lylo_auth import init_auth, get_user_id_from_request
 
 boot_logger.info("=== BLUEPRINTS IMPORTED rss_mb=%.1f ===", _rss_mb())
 
