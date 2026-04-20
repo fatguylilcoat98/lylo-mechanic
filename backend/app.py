@@ -26,14 +26,12 @@ boot_logger.info("=== WORKER BOOT START pid=%s ===", os.getpid())
 
 
 def _rss_mb() -> float:
-    # ru_maxrss is KB on Linux, bytes on macOS. Render is Linux.
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
 
 
 def _install_signal_logging():
     def handler(signum, frame):
         req_logger.error("SIGNAL RECEIVED signum=%s pid=%s rss_mb=%.1f", signum, os.getpid(), _rss_mb())
-        # Re-raise default so gunicorn's own handling still runs
         signal.signal(signum, signal.SIG_DFL)
         os.kill(os.getpid(), signum)
     for sig in (signal.SIGTERM, signal.SIGABRT, signal.SIGUSR1):
@@ -58,11 +56,15 @@ from api.routes.obd2 import obd2_bp
 from api.routes.billing import billing_bp
 from api.routes.analyze import analyze_bp
 from api.routes.truth import truth_bp
+from auth import init_auth, get_user_id_from_request
 
 boot_logger.info("=== BLUEPRINTS IMPORTED rss_mb=%.1f ===", _rss_mb())
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 CORS(app)
+
+# Initialize auth middleware
+init_auth(app)
 
 
 @app.before_request
@@ -113,6 +115,7 @@ def _unhandled(exc):
     from flask import jsonify
     return jsonify({"error": str(exc), "exception_type": type(exc).__name__}), 500
 
+
 app.register_blueprint(session_bp, url_prefix="/api/v1/session")
 app.register_blueprint(diagnose_bp, url_prefix="/api/v1/diagnose")
 app.register_blueprint(scenarios_bp, url_prefix="/api/v1/scenarios")
@@ -127,14 +130,15 @@ app.register_blueprint(truth_bp, url_prefix="/api/v1")
 
 boot_logger.info("=== WORKER BOOT COMPLETE rss_mb=%.1f ===", _rss_mb())
 
+
 @app.route("/")
 def index():
     from flask import render_template
     return render_template("mvp.html")
 
+
 @app.route("/home")
 def lylo_home():
-    """Premium LYLO landing page — showcases all 4 truth layers."""
     from flask import render_template, make_response
     resp = make_response(render_template("lylo_home.html"))
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -142,16 +146,18 @@ def lylo_home():
     resp.headers["Expires"] = "0"
     return resp
 
+
 @app.route("/dashboard")
 def dashboard():
     from flask import render_template
     return render_template("index.html")
 
+
 @app.route("/health")
 def health():
     return {"status": "ok", "system": "LYLO Mechanic", "version": "1.0.0"}
 
+
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
