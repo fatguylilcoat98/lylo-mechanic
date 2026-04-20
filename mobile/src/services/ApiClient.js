@@ -16,14 +16,36 @@ class ApiClient {
   constructor(baseUrl = DEFAULT_BASE_URL) {
     this._baseUrl = baseUrl;
     this._instanceId = Date.now();
+    this._authToken = null;
   }
 
   set baseUrl(url) {
     this._baseUrl = url;
   }
 
+  /**
+   * Set the Supabase JWT token for authenticated requests.
+   * Call this after the user logs in via Supabase.
+   * @param {string|null} token - JWT access token from Supabase session
+   */
+  setAuthToken(token) {
+    this._authToken = token;
+    console.log('[ApiClient] Auth token', token ? 'set' : 'cleared');
+  }
+
+  /**
+   * Build headers including auth token if available.
+   */
+  _headers(extra = {}) {
+    const headers = {'Content-Type': 'application/json', ...extra};
+    if (this._authToken) {
+      headers['Authorization'] = `Bearer ${this._authToken}`;
+    }
+    return headers;
+  }
+
   _logState(label) {
-    console.log(`[API ${label}] instanceId=${this._instanceId} baseUrl=${this._baseUrl}`);
+    console.log(`[API ${label}] instanceId=${this._instanceId} baseUrl=${this._baseUrl} authed=${!!this._authToken}`);
   }
 
   /**
@@ -51,7 +73,7 @@ class ApiClient {
 
     const resp = await fetch(`${this._baseUrl}/api/v1/diagnose/live`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: this._headers(),
       body: JSON.stringify(payload),
     });
 
@@ -69,7 +91,10 @@ class ApiClient {
   async diagnoseScenario(scenarioId) {
     const resp = await fetch(
       `${this._baseUrl}/api/v1/diagnose/scenario/${scenarioId}`,
-      {method: 'POST'},
+      {
+        method: 'POST',
+        headers: this._headers(),
+      },
     );
 
     if (!resp.ok) {
@@ -90,12 +115,6 @@ class ApiClient {
 
   /**
    * Quick Check MVP — send DTC codes or symptom text to the new quick-check endpoint.
-   * Returns ShopScript-ready results: what's wrong, urgency, cost, difficulty,
-   * what to say at the shop, and red flags.
-   *
-   * @param {string} input - A DTC code ("P0420"), multiple codes ("P0420 P0171"),
-   *                         or symptom text ("rough idle, check engine light")
-   * @returns {object} {input, input_type, results: [{code, whats_wrong, urgency, cost, difficulty, shop_script, red_flags}]}
    */
   async quickCheck(input) {
     apiCallCounter++;
@@ -118,9 +137,9 @@ class ApiClient {
     let resp;
     const fetchOpts = {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: this._headers(),
       body: requestBody,
-      signal: AbortSignal.timeout(30000), // 30s timeout — prevents hanging on stale connections
+      signal: AbortSignal.timeout(30000),
     };
 
     try {
@@ -136,7 +155,6 @@ class ApiClient {
       console.log(tag, 'Response URL:', resp.url);
       console.log(tag, 'Headers:', JSON.stringify(Object.fromEntries(resp.headers?.entries?.() || [])));
     } catch (networkErr) {
-      // Stale keep-alive connection — retry once with a fresh socket
       const isNetworkFail = networkErr.message?.includes('Network request failed')
         || networkErr.name === 'TimeoutError'
         || networkErr.name === 'AbortError';
@@ -146,7 +164,7 @@ class ApiClient {
           const retryStart = Date.now();
           resp = await fetch(url, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: this._headers(),
             body: requestBody,
             signal: AbortSignal.timeout(30000),
           });
@@ -157,34 +175,19 @@ class ApiClient {
           console.error(tag, 'error.name:', retryErr.name);
           console.error(tag, 'error.message:', retryErr.message);
           console.error(tag, 'error.stack:', retryErr.stack);
-          console.error(tag, 'Full error:', JSON.stringify(retryErr, Object.getOwnPropertyNames(retryErr)));
-          console.error(tag, 'Request was:', requestBody);
-
           retryErr._lyloDebug = {
-            callId,
-            url,
-            requestBody,
+            callId, url, requestBody,
             phase: 'fetch_retry_threw',
             instanceId: this._instanceId,
           };
           throw retryErr;
         }
       } else {
-        // Non-network error — don't retry
         console.error(tag, '===== FETCH THREW (no HTTP response) =====');
         console.error(tag, 'error.name:', networkErr.name);
         console.error(tag, 'error.message:', networkErr.message);
-        console.error(tag, 'error.code:', networkErr.code);
-        console.error(tag, 'error.type:', networkErr.type);
-        console.error(tag, 'error.cause:', networkErr.cause);
-        console.error(tag, 'error.stack:', networkErr.stack);
-        console.error(tag, 'Full error:', JSON.stringify(networkErr, Object.getOwnPropertyNames(networkErr)));
-        console.error(tag, 'Request was:', requestBody);
-
         networkErr._lyloDebug = {
-          callId,
-          url,
-          requestBody,
+          callId, url, requestBody,
           phase: 'fetch_threw',
           instanceId: this._instanceId,
         };
@@ -192,7 +195,6 @@ class ApiClient {
       }
     }
 
-    // We got an HTTP response — read the body
     let responseText;
     try {
       responseText = await resp.text();
@@ -206,13 +208,10 @@ class ApiClient {
       console.error(tag, '===== HTTP ERROR =====');
       console.error(tag, 'Status:', resp.status, resp.statusText);
       console.error(tag, 'Body:', responseText.slice(0, 500));
-      console.error(tag, 'Request was:', requestBody);
 
       const err = new Error(`Quick check failed (${resp.status}): ${responseText}`);
       err._lyloDebug = {
-        callId,
-        url,
-        requestBody,
+        callId, url, requestBody,
         status: resp.status,
         statusText: resp.statusText,
         responseBody: responseText,
@@ -222,7 +221,6 @@ class ApiClient {
       throw err;
     }
 
-    // Parse JSON from the already-read text
     try {
       const parsed = JSON.parse(responseText);
       console.log(tag, 'Parsed OK — keys:', Object.keys(parsed));
@@ -237,13 +235,6 @@ class ApiClient {
 
   /**
    * Unified Analysis — single endpoint for ALL diagnostics.
-   *
-   * OBD and manual input both go through /api/v1/analyze.
-   * Backend handles: check gating, plan filtering, rate limiting.
-   * OBD is just an input method — the product is the backend.
-   *
-   * @param {object} params - { source, codes, input, vehicle, user_id }
-   * @returns {object} Diagnostic result (filtered by plan)
    */
   async analyze(params) {
     apiCallCounter++;
@@ -260,7 +251,7 @@ class ApiClient {
     let resp;
     const fetchOpts = {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: this._headers(),
       body: requestBody,
       signal: AbortSignal.timeout(30000),
     };
@@ -268,14 +259,13 @@ class ApiClient {
     try {
       resp = await fetch(url, fetchOpts);
     } catch (networkErr) {
-      // Retry once on network failure (stale connection fix)
       const isNetworkFail = networkErr.message?.includes('Network request failed')
         || networkErr.name === 'TimeoutError';
       if (isNetworkFail) {
         console.warn(tag, 'Retrying analyze...');
         resp = await fetch(url, {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: this._headers(),
           body: requestBody,
           signal: AbortSignal.timeout(30000),
         });
@@ -287,9 +277,8 @@ class ApiClient {
     const responseText = await resp.text();
 
     if (!resp.ok) {
-      // 403 = check limit reached, 429 = rate limited
       if (resp.status === 403 || resp.status === 429) {
-        return JSON.parse(responseText); // Return gate/limit response to UI
+        return JSON.parse(responseText);
       }
       throw new Error(`Analyze failed (${resp.status}): ${responseText}`);
     }
@@ -299,11 +288,6 @@ class ApiClient {
 
   /**
    * Analyze from OBD scan data — sends codes through unified endpoint.
-   * OBD is the data collector. Backend is the brain.
-   *
-   * @param {object} scanData - Result from OBDService.fullScan()
-   * @param {object} vehicle  - Optional vehicle info {year, make, model}
-   * @returns {object} Diagnostic result (filtered by plan)
    */
   async quickCheckFromScan(scanData, vehicle = null) {
     const tag = `[API quickCheckFromScan]`;
@@ -313,8 +297,6 @@ class ApiClient {
     console.log(tag, 'Extracted DTC codes:', JSON.stringify(dtcCodes));
 
     if (dtcCodes.length === 0) {
-      // No codes found — return helpful "clean" result locally
-      // (doesn't cost a check — no backend call needed)
       return {
         input: 'OBD Scan (no codes)',
         input_type: 'obd_scan',
@@ -345,7 +327,6 @@ class ApiClient {
       };
     }
 
-    // Send through unified analyze endpoint — backend handles everything
     return this.analyze({
       source: 'obd',
       codes: dtcCodes,
