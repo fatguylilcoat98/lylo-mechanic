@@ -5,6 +5,7 @@ Created with the help of AI collaborators (Claude · GPT · Gemini · Groq)
 Truth · Safety · We Got Your Back
 
 Verifies Supabase JWT tokens on protected endpoints.
+Only billing endpoints require authentication - analyze endpoint is open.
 """
 
 import os
@@ -17,12 +18,9 @@ logger = logging.getLogger("lylo.auth")
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 
-# Endpoints that require authentication
+# Only protect billing endpoints - analyze endpoint should be open
 PROTECTED_PREFIXES = (
-    "/api/v1/diagnose",
-    "/api/v1/quick",
     "/api/v1/billing",
-    "/api/v1/analyze",
 )
 
 
