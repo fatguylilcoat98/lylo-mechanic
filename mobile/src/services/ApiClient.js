@@ -290,6 +290,9 @@ class ApiClient {
    * Analyze from OBD scan data — sends codes through unified endpoint.
    */
   async quickCheckFromScan(scanData, vehicle = null) {
+    // Wait for BT to settle before network call
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     const tag = `[API quickCheckFromScan]`;
     console.log(tag, 'raw_dtcs:', JSON.stringify(scanData?.raw_dtcs));
 

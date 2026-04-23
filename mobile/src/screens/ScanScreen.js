@@ -263,7 +263,13 @@ export default function ScanScreen({route, navigation}) {
       let result;
       try {
         const postStart = Date.now();
-        result = await ApiClient.quickCheckFromScan(data);
+        try {
+          result = await ApiClient.quickCheckFromScan(data);
+        } catch(e) {
+          // Retry once after 3 seconds
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          result = await ApiClient.quickCheckFromScan(data);
+        }
         const postDuration = Date.now() - postStart;
 
         console.log(tag, `quickCheckFromScan SUCCESS in ${postDuration}ms`);
