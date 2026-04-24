@@ -1,51 +1,8 @@
 {
   "expo": {
-    "name": "lylo-mechanic",
+    "name": "LYLO Mechanic",
     "slug": "lylo-mechanic",
     "version": "0.1.0",
-    "android": {
-      "permissions": [
-        "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_SCAN",
-        "android.permission.BLUETOOTH_CONNECT",
-        "android.permission.ACCESS_FINE_LOCATION"
-      ],
-      "package": "com.goodneighborguard.lylomechanic"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.goodneighborguard.lylomechanic",
-      "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "LYLO Mechanic needs Bluetooth to connect",
-        "NSBluetoothPeripheralUsageDescription": "LYLO Mechanic needs Bluetooth"
-      }
-    },
-    "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 23,
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
-            "kotlinVersion": "1.9.24"
-          }
-        }
-      ],
-      [
-        "react-native-ble-plx",
-        {
-          "isBackgroundEnabled": false,
-          "modes": [
-            "central"
-          ],
-          "bluetoothAlwaysPermission": "LYLO Mechanic needs Bluetooth to connect",
-          "neverForLocation": true
-        }
-      ],
-      "./plugins/withBluetoothClassic"
-    ],
     "extra": {
       "eas": {
         "projectId": "916eda9d-5bf2-40c4-abdb-22ea6e491d96"

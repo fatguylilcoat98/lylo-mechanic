@@ -24,7 +24,25 @@ import ApiClient from '../services/ApiClient';
 const SUPABASE_URL = 'https://hcquisslflenechhgqyj.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Lazy initialization to prevent startup crashes
+let supabase = null;
+const getSupabase = () => {
+  if (!supabase) {
+    try {
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (error) {
+      console.error('[LoginScreen] Failed to initialize Supabase:', error);
+      // Return a mock client that will gracefully fail
+      return {
+        auth: {
+          signInWithPassword: () => Promise.reject(new Error('Supabase initialization failed')),
+          signUp: () => Promise.reject(new Error('Supabase initialization failed'))
+        }
+      };
+    }
+  }
+  return supabase;
+};
 
 export default function LoginScreen({ navigation }) {
   const [mode, setMode] = useState('login'); // 'login' or 'signup'
@@ -40,7 +58,7 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await getSupabase().auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -78,7 +96,7 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await getSupabase().auth.signUp({
         email: email.trim(),
         password,
       });
