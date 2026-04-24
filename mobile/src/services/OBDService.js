@@ -371,6 +371,9 @@ class OBDService {
         hex = hex.slice(2);
       }
 
+      // Ensure we have valid hex characters - fix String.fromCharCode conversion issues
+      hex = this._sanitizeHexString(hex);
+
       // Parse pairs of bytes as DTCs
       for (let i = 0; i + 3 <= hex.length; i += 4) {
         const chunk = hex.substr(i, 4);
@@ -388,6 +391,28 @@ class OBDService {
     }
 
     return dtcs;
+  }
+
+  /**
+   * Sanitize hex string - fix cases where bytes were incorrectly converted with String.fromCharCode
+   */
+  _sanitizeHexString(hex) {
+    let sanitized = '';
+    for (let i = 0; i < hex.length; i++) {
+      const char = hex[i];
+      const charCode = char.charCodeAt(0);
+
+      // Valid hex characters (0-9, A-F)
+      if ((charCode >= 48 && charCode <= 57) || (charCode >= 65 && charCode <= 70)) {
+        sanitized += char;
+      } else {
+        // Convert non-printable/invalid chars back to hex
+        // This fixes the String.fromCharCode conversion issue
+        const hexByte = charCode.toString(16).toUpperCase().padStart(2, '0');
+        sanitized += hexByte;
+      }
+    }
+    return sanitized;
   }
 }
 
