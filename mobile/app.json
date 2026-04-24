@@ -3,6 +3,9 @@
     "name": "LYLO Mechanic",
     "slug": "lylo-mechanic",
     "version": "0.1.0",
+    "splash": {
+      "backgroundColor": "#1A3A6B"
+    },
     "extra": {
       "eas": {
         "projectId": "916eda9d-5bf2-40c4-abdb-22ea6e491d96"
