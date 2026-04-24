@@ -295,6 +295,8 @@ def get_user_status(user_id: str) -> dict:
 
 def filter_result_by_plan(result: dict, plan: str) -> dict:
     """Filter diagnostic result based on user's plan."""
+    # During testing — return full results for all users
+    return result
     if plan == "pro":
         return result
 
