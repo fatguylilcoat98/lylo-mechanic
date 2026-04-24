@@ -3,6 +3,7 @@
     "name": "LYLO Mechanic",
     "slug": "lylo-mechanic",
     "version": "0.1.0",
+    "icon": "./assets/lylo_mechanic_logo_.png",
     "splash": {
       "backgroundColor": "#1A3A6B"
     },
