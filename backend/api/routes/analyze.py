@@ -35,7 +35,6 @@ analyze_bp = Blueprint("analyze", __name__)
 
 
 @analyze_bp.route("", methods=["POST"])
-@require_auth
 def analyze():
     """
     Unified analysis endpoint — single brain, multiple inputs.
@@ -70,8 +69,9 @@ def analyze():
         logger.info(f"Request data: {data}")
 
         source = data.get("source", "manual")
-        user_id = g.user_id
-        logger.info(f"source={source} user_id={user_id} email={g.user_email}")
+        user_id = getattr(g, 'user_id', None) or request.remote_addr or 'anonymous'
+        user_email = getattr(g, 'user_email', None) or 'anonymous'
+        logger.info(f"source={source} user_id={user_id} email={user_email}")
 
         # ── Rate limit ────────────────────────────────────────────────────
         logger.info("Step: rate limit check")
