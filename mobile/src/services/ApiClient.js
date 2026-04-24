@@ -10,6 +10,12 @@
 // Production backend on Render
 const DEFAULT_BASE_URL = 'https://lylo-mechanic.onrender.com';
 
+function _makeTimeoutSignal(ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+}
+
 let apiCallCounter = 0;
 
 class ApiClient {
@@ -139,12 +145,13 @@ class ApiClient {
       method: 'POST',
       headers: this._headers(),
       body: requestBody,
-      signal: AbortSignal.timeout(30000),
     };
 
+    const {signal, clear} = _makeTimeoutSignal(30000);
     try {
       const fetchStart = Date.now();
-      resp = await fetch(url, fetchOpts);
+      resp = await fetch(url, {...fetchOpts, signal});
+      clear();
       const fetchDuration = Date.now() - fetchStart;
 
       console.log(tag, '===== RESPONSE =====');
@@ -162,12 +169,17 @@ class ApiClient {
         console.warn(tag, `First attempt failed (${networkErr.message}), retrying once...`);
         try {
           const retryStart = Date.now();
-          resp = await fetch(url, {
-            method: 'POST',
-            headers: this._headers(),
-            body: requestBody,
-            signal: AbortSignal.timeout(30000),
-          });
+          const {signal: retrySignal, clear: retryClear} = _makeTimeoutSignal(30000);
+          try {
+            resp = await fetch(url, {
+              method: 'POST',
+              headers: this._headers(),
+              body: requestBody,
+              signal: retrySignal,
+            });
+          } finally {
+            retryClear();
+          }
           const retryDuration = Date.now() - retryStart;
           console.log(tag, `Retry succeeded in ${retryDuration}ms`);
         } catch (retryErr) {
@@ -253,22 +265,28 @@ class ApiClient {
       method: 'POST',
       headers: this._headers(),
       body: requestBody,
-      signal: AbortSignal.timeout(30000),
     };
 
+    const {signal, clear} = _makeTimeoutSignal(30000);
     try {
-      resp = await fetch(url, fetchOpts);
+      resp = await fetch(url, {...fetchOpts, signal});
+      clear();
     } catch (networkErr) {
       const isNetworkFail = networkErr.message?.includes('Network request failed')
         || networkErr.name === 'TimeoutError';
       if (isNetworkFail) {
         console.warn(tag, 'Retrying analyze...');
-        resp = await fetch(url, {
-          method: 'POST',
-          headers: this._headers(),
-          body: requestBody,
-          signal: AbortSignal.timeout(30000),
-        });
+        const {signal: retrySignal, clear: retryClear} = _makeTimeoutSignal(30000);
+        try {
+          resp = await fetch(url, {
+            method: 'POST',
+            headers: this._headers(),
+            body: requestBody,
+            signal: retrySignal,
+          });
+        } finally {
+          retryClear();
+        }
       } else {
         throw networkErr;
       }
@@ -342,13 +360,16 @@ class ApiClient {
    * Health check — is the backend running?
    */
   async ping() {
+    const {signal, clear} = _makeTimeoutSignal(3000);
     try {
       const resp = await fetch(`${this._baseUrl}/api/v1/session/ping`, {
-        signal: AbortSignal.timeout(3000),
+        signal,
       });
       return resp.ok;
     } catch {
       return false;
+    } finally {
+      clear();
     }
   }
 }
