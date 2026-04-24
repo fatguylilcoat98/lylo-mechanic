@@ -63,6 +63,20 @@ class OBDService {
   }
 
   /**
+   * Reset OBDService state to prevent data contamination between scans.
+   * Clears any cached data that might persist between different vehicles.
+   */
+  reset() {
+    console.log('[OBD] Resetting service state to prevent cross-contamination');
+    // Clear any cached scan data or state that might persist
+    // This prevents Ford truck scans from returning Lexus data
+    this._lastScanData = null;
+    this._cachedDTCs = null;
+    this._lastVehicle = null;
+    return Promise.resolve();
+  }
+
+  /**
    * Initialize the ELM327 adapter. Must be called after Bluetooth connect.
    * Returns adapter info string.
    */

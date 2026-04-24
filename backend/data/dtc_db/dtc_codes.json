@@ -1,4 +1,12 @@
 {
+  "P0007": {
+    "description": "Fuel Control Shutoff Valve A Control Circuit Low",
+    "system": "powertrain",
+    "category": "SAE_standard",
+    "safety_related": false,
+    "common_causes": ["faulty_shutoff_valve", "wiring_harness", "ecm_failure", "fuel_system_pressure"],
+    "cascade_source": false
+  },
   "P0100": {
     "description": "Mass Air Flow Circuit Malfunction",
     "system": "powertrain",

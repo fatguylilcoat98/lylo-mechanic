@@ -4,6 +4,56 @@
     "region": "US National Average",
     "note": "Prices reflect national average ranges. Regional variation \u00b130%. Update every 12 months."
   },
+  "fuel_shutoff_valve_faulty": {
+    "volatility": "MEDIUM",
+    "diy_parts_low": 50,
+    "diy_parts_high": 120,
+    "diy_tool_cost": 30,
+    "shop_parts_low": 60,
+    "shop_parts_high": 140,
+    "shop_labor_low": 80,
+    "shop_labor_high": 160,
+    "dealer_total_low": 200,
+    "dealer_total_high": 400,
+    "dealer_note": "Dealer uses OEM part; labor similar to independent shop",
+    "labor_hours_low": 1.0,
+    "labor_hours_high": 2.0,
+    "diy_time": "1-2 hours (varies by valve location)",
+    "parts": [
+      {
+        "name": "Fuel Control Shutoff Valve",
+        "qty": 1,
+        "low": 50,
+        "high": 120,
+        "oem_note": "OEM recommended for reliability"
+      }
+    ]
+  },
+  "fuel_shutoff_wiring": {
+    "volatility": "LOW",
+    "diy_parts_low": 15,
+    "diy_parts_high": 40,
+    "diy_tool_cost": 25,
+    "shop_parts_low": 20,
+    "shop_parts_high": 50,
+    "shop_labor_low": 80,
+    "shop_labor_high": 120,
+    "dealer_total_low": 150,
+    "dealer_total_high": 250,
+    "dealer_note": "Diagnostic time may add to cost",
+    "labor_hours_low": 0.5,
+    "labor_hours_high": 1.5,
+    "diy_time": "30 min - 1 hour (depending on wire location)",
+    "parts": [
+      {
+        "name": "Wiring repair kit/connector",
+        "qty": 1,
+        "low": 15,
+        "high": 40,
+        "oem_note": "Generic repair supplies acceptable"
+      }
+    ]
+  },
   "spark_plug_cyl1": {
     "volatility": "LOW",
     "diy_parts_low": 20,

@@ -178,7 +178,7 @@ def _get_urgency(code: str, dtc_info: dict, cause_map_entry: dict) -> dict:
             "message": "This affects critical safety systems. Get it inspected before driving."
         }
 
-    if safety_related or code.startswith("P030"):
+    if safety_related or code.startswith("P030") or code == "P0007":
         return {
             "level": "INSPECT SOON",
             "color": "orange",

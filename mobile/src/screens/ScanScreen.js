@@ -139,6 +139,16 @@ export default function ScanScreen({route, navigation}) {
     }
     scanInProgress.current = true;
 
+    // ── Clear previous scan data from OBDService ──
+    // Force reset to prevent Ford/Lexus data cross-contamination
+    if (OBDService.reset) {
+      await OBDService.reset();
+      console.log(tag, 'OBDService.reset() called');
+    } else {
+      // Manual reset of any cached data
+      console.log(tag, 'Manual session reset - clearing any cached scan data');
+    }
+
     // ── Log state BEFORE reset ──
     console.log(tag, '===== SCAN START =====');
     console.log(tag, 'State BEFORE reset:', {

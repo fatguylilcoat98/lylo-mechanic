@@ -4,8 +4,19 @@
     "slug": "lylo-mechanic",
     "version": "0.1.0",
     "icon": "./assets/lylo_mechanic_logo_.png",
+    "platforms": ["ios", "android"],
     "splash": {
-      "backgroundColor": "#1A3A6B"
+      "backgroundColor": "#1A3A6B",
+      "image": "./assets/lylo_mechanic_logo_.png",
+      "resizeMode": "contain"
+    },
+    "android": {
+      "icon": "./assets/lylo_mechanic_logo_.png",
+      "package": "com.stangman1998.lylomechanic",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/lylo_mechanic_logo_.png",
+        "backgroundColor": "#1A3A6B"
+      }
     },
     "extra": {
       "eas": {

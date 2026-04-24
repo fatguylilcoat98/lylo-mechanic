@@ -1,4 +1,30 @@
 {
+  "P0007": {
+    "causes": [
+      {
+        "id": "fuel_shutoff_valve_faulty",
+        "name": "Faulty Fuel Control Shutoff Valve",
+        "description": "The fuel control shutoff valve (solenoid) has failed internally or has a short/open circuit preventing proper operation.",
+        "base_confidence": 70,
+        "basis": "plausible",
+        "boosted_by": ["symptom_fuel_smell", "symptom_hard_start", "multiple_fuel_codes"],
+        "supporting_evidence_template": ["P0007 directly indicates shutoff valve circuit issue", "Fuel odor or starting problems support valve failure"],
+        "what_could_be_wrong": ["If fuel system pressure is normal, may be wiring/connector issue", "Valve resistance testing required for confirmation"],
+        "is_downstream": false
+      },
+      {
+        "id": "fuel_shutoff_wiring",
+        "name": "Shutoff Valve Wiring/Connector Problem",
+        "description": "Damaged wiring, loose connections, or corroded pins in the shutoff valve circuit causing low voltage/signal.",
+        "base_confidence": 50,
+        "basis": "plausible",
+        "boosted_by": ["symptom_intermittent", "water_damage_history"],
+        "supporting_evidence_template": ["Circuit low codes often indicate wiring issues", "Intermittent symptoms suggest connection problems"],
+        "what_could_be_wrong": ["If wiring looks good visually, may be internal valve failure", "Requires voltage/continuity testing"],
+        "is_downstream": false
+      }
+    ]
+  },
   "P0420": {
     "causes": [
       {
