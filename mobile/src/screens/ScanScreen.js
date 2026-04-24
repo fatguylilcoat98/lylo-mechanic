@@ -260,15 +260,20 @@ export default function ScanScreen({route, navigation}) {
 
       addLog(`${tag} POST input: "${inputStr}" (${dtcCodes.length} codes)`, 'info');
 
+      // Validate scan data before API call
+      if (!data) {
+        throw new Error('OBD scan returned no data');
+      }
+
       let result;
       try {
         const postStart = Date.now();
         try {
-          result = await ApiClient.quickCheckFromScan(data);
+          result = await ApiClient.quickCheckFromScan(data, vehicle);
         } catch(e) {
           // Retry once after 3 seconds
           await new Promise(resolve => setTimeout(resolve, 3000));
-          result = await ApiClient.quickCheckFromScan(data);
+          result = await ApiClient.quickCheckFromScan(data, vehicle);
         }
         const postDuration = Date.now() - postStart;
 
